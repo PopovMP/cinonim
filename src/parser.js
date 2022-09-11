@@ -145,8 +145,8 @@ function parserLoop(tokens, index, node)
 	const t1 = tokens[index + 1]
 	const t2 = tokens[index + 2]
 	const t3 = tokens[index + 3]
-	const t4 = tokens[index + 3]
-	const t5 = tokens[index + 3]
+	const t4 = tokens[index + 4]
+	const t5 = tokens[index + 5]
 
 	// Global variable: int foo = 42;
 	if (node.scope === Scope.global &&
@@ -233,14 +233,18 @@ function parserLoop(tokens, index, node)
 		const funcBody = makeNode(functionNode, NodeType.funcBody, funcName, dataType)
 
 		// Function body
-		endIndex += 1
-		for (let openBraces = 0; openBraces > 0; endIndex++) {
+		endIndex += 2
+		const bodyStart = endIndex
+		for (let openBraces = 1; openBraces > 0; endIndex++) {
 			const tkn = tokens[endIndex]
 			if (tkn.type === TokenType.punctuation && tkn.value === '{')
 				openBraces += 1
 			if (tkn.type === TokenType.punctuation && tkn.value === '}')
 				openBraces -= 1
 		}
+
+		const bodyEnd = endIndex
+		parseFuncBody(funcBody, tokens.slice(bodyStart, bodyEnd), 0)
 
 		functionNode.nodes = [funcParams, funcBody]
 
@@ -274,6 +278,36 @@ function parseExpression(node, tokens, index)
 
 		return numberNode
 	}
+}
+
+/**
+ * Parses a function body
+ *
+ * @param {Node}    funcBodyNode
+ * @param {Token[]} tokens
+ * @param {number}  index
+ *
+ * @return {void}
+ */
+function parseFuncBody(funcBodyNode, tokens, index)
+{
+	// noinspection PointlessArithmeticExpressionJS
+	const t0 = tokens[index + 0]
+	const t1 = tokens[index + 1]
+	const t2 = tokens[index + 2]
+
+	// Local declaration
+	// int foo;
+	if (isDataType(t0) &&
+		t1.type === TokenType.word &&
+		t2.type === TokenType.punctuation && t2.value === ';') {
+		const varNode = makeNode(funcBodyNode, NodeType.localVar, t1.value, dataTypeMap[t0.value])
+		varNode.scope   = Scope.locale
+		varNode.tokens  = [t0, t1, t2]
+		funcBodyNode.nodes.push(varNode)
+		parseFuncBody(funcBodyNode, tokens, index + 3)
+	}
+
 }
 
 module.exports = {
