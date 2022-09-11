@@ -231,12 +231,15 @@ function parserLoop(tokens, index, node)
 		}
 
 		const funcBody = makeNode(functionNode, NodeType.funcBody, funcName, dataType)
-		// Eat func body
+
+		// Function body
 		endIndex += 1
-		for (;;endIndex++) {
+		for (let openBraces = 0; openBraces > 0; endIndex++) {
 			const tkn = tokens[endIndex]
+			if (tkn.type === TokenType.punctuation && tkn.value === '{')
+				openBraces += 1
 			if (tkn.type === TokenType.punctuation && tkn.value === '}')
-				break
+				openBraces -= 1
 		}
 
 		functionNode.nodes = [funcParams, funcBody]
