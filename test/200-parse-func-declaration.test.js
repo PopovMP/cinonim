@@ -1,0 +1,75 @@
+'use strict'
+
+const {strictEqual, deepStrictEqual} = require('assert')
+
+const {tokenize, clean} = require('@popovmp/tokenizer')
+const {describe, it}    = require('@popovmp/mocha-tiny')
+
+const {parse, DataType, NodeType} = require('../src/parser')
+
+/**
+ * Parses source code to Nodes
+ * @param {string} src
+ *
+ * @return {Node[]}
+ */
+function parseModule(src)
+{
+	const tokens    = tokenize(src)
+	const cleaned   = clean(tokens)
+	const moduleNode = parse(cleaned)
+
+	return moduleNode.nodes
+}
+
+describe('func declaration', () => {
+	it('int foo() { }', () => {
+		const src = `int foo() { }`
+		const funcDec = parseModule(src)[0]
+		strictEqual(funcDec.type, NodeType.function)
+		strictEqual(funcDec.value, 'foo')
+		strictEqual(funcDec.dataType, DataType.i32)
+
+		const [paramNode, funcBody] = funcDec.nodes
+
+		deepStrictEqual(paramNode.nodes, [])
+		strictEqual(funcBody.value, 'foo')
+		strictEqual(funcBody.dataType, DataType.i32)
+	})
+
+	it('double bar(int a) { }', () => {
+		const src = `double bar(int a) { }`
+		const funcDec = parseModule(src)[0]
+		strictEqual(funcDec.type, NodeType.function)
+		strictEqual(funcDec.value, 'bar')
+		strictEqual(funcDec.dataType, DataType.f64)
+
+		const [paramNode, funcBody] = funcDec.nodes
+
+		const param = paramNode.nodes[0]
+		strictEqual(param.value, 'a')
+		strictEqual(param.dataType, DataType.i32)
+
+		strictEqual(funcBody.value, 'bar')
+		strictEqual(funcBody.dataType, DataType.f64)
+	})
+
+	it('void baz(float a, double b) { }', () => {
+		const src = `void baz(float a, double b) { }`
+		const funcDec = parseModule(src)[0]
+		strictEqual(funcDec.type, NodeType.function)
+		strictEqual(funcDec.value, 'baz')
+		strictEqual(funcDec.dataType, DataType.void)
+
+		const [paramNode, funcBody] = funcDec.nodes
+
+		const [paramA, paramB] = paramNode.nodes
+		strictEqual(paramA.value, 'a')
+		strictEqual(paramA.dataType, DataType.f32)
+		strictEqual(paramB.value, 'b')
+		strictEqual(paramB.dataType, DataType.f64)
+
+		strictEqual(funcBody.value, 'baz')
+		strictEqual(funcBody.dataType, DataType.void)
+	})
+})

@@ -1,0 +1,13 @@
+{
+  "name": "peperoni",
+  "version": "0.1.0",
+  "dependencies": {
+    "@popovmp/tokenizer": "^1.1.0"
+  },
+  "devDependencies": {
+    "@popovmp/mocha-tiny": "^2.3.0"
+  },
+  "scripts": {
+    "test": "mocha-tiny"
+  }
+}
