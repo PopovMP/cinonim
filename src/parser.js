@@ -43,6 +43,7 @@ const NodeType = {
 	number     : 'number',
 	parameter  : 'parameter',
 	variable   : 'variable',
+	assignment : 'assignment'
 }
 
 const Scope = {
@@ -244,14 +245,14 @@ function parserLoop(tokens, index, node)
 		}
 
 		const bodyEnd = endIndex
-		parseFuncBody(funcBody, tokens.slice(bodyStart, bodyEnd), 0)
-
 		functionNode.nodes = [funcParams, funcBody]
 
 		node.nodes.push(functionNode)
+
+		parseFuncBody(funcBody, tokens.slice(bodyStart, bodyEnd), 0)
+
 		return parserLoop(tokens, endIndex, node)
 	}
-
 }
 
 /**
@@ -272,9 +273,8 @@ function parseExpression(node, tokens, index)
 		const value = node.dataType === DataType.i32 || node.dataType === DataType.i64
 			? parseInt(t0.value)
 			: parseFloat(t0.value)
-		const numberNode = makeNode(node, NodeType.number, value)
-		numberNode.dataType = node.dataType
-		numberNode.tokens   = [t0]
+		const numberNode = makeNode(node, NodeType.number, value, node.dataType)
+		numberNode.tokens = [t0]
 
 		return numberNode
 	}
@@ -295,6 +295,7 @@ function parseFuncBody(funcBodyNode, tokens, index)
 	const t0 = tokens[index + 0]
 	const t1 = tokens[index + 1]
 	const t2 = tokens[index + 2]
+	const t3 = tokens[index + 3]
 
 	// Local declaration
 	// int foo;
@@ -306,12 +307,68 @@ function parseFuncBody(funcBodyNode, tokens, index)
 		varNode.tokens  = [t0, t1, t2]
 		funcBodyNode.nodes.push(varNode)
 		parseFuncBody(funcBodyNode, tokens, index + 3)
+		return
 	}
 
+	// Assignment
+	// foo = 42;
+	if (t0.type === TokenType.word &&
+		t1.type === TokenType.operator && t1.value === '=') {
+		const varName = t0.value
+
+		const varNode = lookup(funcBodyNode, varName)
+		if (varNode === null) throw new Error('Cannot find variable or parameter: ' + varName)
+
+		const assignmentNode = makeNode(funcBodyNode, NodeType.assignment, varNode.value, varNode.dataType)
+		assignmentNode.scope   = Scope.locale
+		assignmentNode.tokens  = [t0, t1, t2, t3]
+
+		const expressionNode = parseExpression(assignmentNode, tokens, index + 2)
+		expressionNode.scope = Scope.locale
+		assignmentNode.nodes = [varNode, expressionNode]
+
+		funcBodyNode.nodes.push(assignmentNode)
+		parseFuncBody(funcBodyNode, tokens, index + 4)
+		return
+	}
+
+	// noinspection UnnecessaryReturnStatementJS
+	return
+}
+
+/**
+ * Searches a global var, a function parameter or a local variable.
+ *
+ * @param {Node|null}   node
+ * @param {string} varName
+ *
+ * @return {Node|null}
+ */
+function lookup(node, varName)
+{
+	if (node === null) return node
+
+	for (const nd of node.nodes) {
+		if (nd.type === NodeType.localVar && nd.value === varName)
+			return nd
+
+		if (nd.type === NodeType.funcParams) {
+			for (const par of nd.nodes) {
+				if (par.value === varName)
+					return par
+			}
+		}
+
+		if (nd.type === NodeType.globalVar && nd.value === varName)
+			return nd
+	}
+
+	return lookup(node.parent, varName)
 }
 
 module.exports = {
 	parse,
 	NodeType,
 	DataType,
+	Scope,
 }

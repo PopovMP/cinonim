@@ -47,3 +47,20 @@ int sum(int a, int b) { }
 ```wat
 (func $sum (param $a i32) (param $b i32) (result i32) )
 ```
+
+## Local variable declaration
+
+Local variables are declared within a function at the beginning of the function body.
+
+```c
+void foo() {
+    int    bar;
+    double baz;
+}
+``` 
+
+```wat
+(func $foo 
+    (local $bar i32)
+    (local $baz f64))
+```
