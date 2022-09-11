@@ -16,7 +16,7 @@
 // This is a line comment
 ```
 
-## Globals
+## Global variable and constant definition
 
 Global variables must be initialised with a number.
 
@@ -63,4 +63,49 @@ void foo() {
 (func $foo 
     (local $bar i32)
     (local $baz f64))
+```
+
+## Assignment
+
+Local variable assignment
+
+```c
+void foo() {
+    int bar;
+    bar = 42;
+}
+```
+
+```wat
+(func $foo
+    (local $bar i32)
+    (local.set $bar (i32.const 42)))
+```
+
+Function parameter assignment
+
+```c
+void foo(float bar) {
+    bar = 3.14;
+}
+```
+
+```wat
+(func $foo (param $bar f32)
+    (local.set $bar (f32.const 3.14)))
+```
+
+Global variable assignment
+
+```c
+double bar = 0;
+void foo() {
+    bar = 3.14;
+}
+```
+
+```wat
+(global $bar f64 (f64.const 0))
+(func $foo
+    (global.set $bar (f64.const 3.14)))
 ```
