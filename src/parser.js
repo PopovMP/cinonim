@@ -111,7 +111,7 @@ function parse(tokens)
 	const wasmModule = makeNode(null, NodeType.module, 'module', DataType.na)
 
 	const index = 0
-	parseModule(tokens, index, wasmModule)
+	parseModule(wasmModule, tokens, index)
 
 	return wasmModule
 }
@@ -119,13 +119,13 @@ function parse(tokens)
 /**
  * Parses a token in a module's global state
  *
+ * @param {Node}    node
  * @param {Token[]} tokens
- * @param {number} index - current token index
- * @param {Node} node
+ * @param {number}  index - current token index
  *
  * @return {void}
  */
-function parseModule(tokens, index, node)
+function parseModule(node, tokens, index, )
 {
 	if (index === tokens.length) return
 
@@ -155,7 +155,7 @@ function parseModule(tokens, index, node)
 		parseExpression(globalVar, tokens, index + 3)
 
 		node.nodes.push(globalVar)
-		parseModule(tokens, index + 5, node)
+		parseModule(node, tokens, index + 5)
 		return
 	}
 
@@ -178,7 +178,7 @@ function parseModule(tokens, index, node)
 		parseExpression(globalConst, tokens, index + 4)
 
 		node.nodes.push(globalConst)
-		parseModule(tokens, index + 6, node)
+		parseModule(node, tokens, index + 6)
 		return
 	}
 
@@ -232,7 +232,7 @@ function parseModule(tokens, index, node)
 
 		parseFuncBody(funcBody, tokens.slice(bodyStart, bodyEnd), 0)
 
-		parseModule(tokens, endIndex, node)
+		parseModule(node, tokens, endIndex)
 		return
 	}
 
