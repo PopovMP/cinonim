@@ -194,50 +194,41 @@ function parseModule(node, tokens, index, )
 
 		// Function parameters
 		const funcParams = makeNode(functionNode, NodeType.funcParams, funcName, DataType.na)
-		let endIndex = index + 3
-		for (;;endIndex++) {
-			const tkn = tokens[endIndex]
+		index += 3
+		for (;;index++) {
+			const tkn = tokens[index]
 			if (tkn.type === TokenType.punctuation && tkn.value === ')')
 				break
 			if (tkn.type === TokenType.punctuation && tkn.value === ',')
 				continue
 
-			const tDataType  = tkn
-			const tParamName = tokens[++endIndex]
-			const dataType   = dataTypeMap[tDataType.value]
-			const paramName  = tParamName.value
+			const tokenDataType  = tkn
+			const tokenParamName = tokens[++index]
+			const dataType   = dataTypeMap[tokenDataType.value]
+			const paramName  = tokenParamName.value
 
 			const param = makeNode(funcParams, NodeType.parameter, paramName, dataType)
-			param.tokens = [tDataType, tParamName]
+			param.tokens = [tokenDataType, tokenParamName]
 
 			funcParams.nodes.push(param)
 		}
 
 		// Function body
 		const funcBody = makeNode(functionNode, NodeType.funcBody, funcName, dataType)
-		endIndex += 2
-		const bodyStart = endIndex
-		for (let openBraces = 1; openBraces > 0; endIndex++) {
-			const tkn = tokens[endIndex]
-			if (tkn.type === TokenType.punctuation && tkn.value === '{')
-				openBraces += 1
-			if (tkn.type === TokenType.punctuation && tkn.value === '}')
-				openBraces -= 1
-		}
+		funcBody.tokens.push(tokens[index])
 
-		const bodyEnd = endIndex
 		functionNode.nodes = [funcParams, funcBody]
 
 		node.nodes.push(functionNode)
 
-		parseFuncBody(funcBody, tokens.slice(bodyStart, bodyEnd), 0)
+		index += 2 // eat opening "{"
+		index = parseFuncBody(funcBody, tokens, index)
 
-		parseModule(node, tokens, endIndex)
+		parseModule(node, tokens, index)
 		return
 	}
 
-	// noinspection UnnecessaryReturnStatementJS
-	return
+	throw new Error('Unreachable parseModule')
 }
 
 /**
@@ -247,7 +238,7 @@ function parseModule(node, tokens, index, )
  * @param {Token[]} tokens
  * @param {number}  index
  *
- * @return {void}
+ * @return {number} - end index
  */
 function parseFuncBody(funcBodyNode, tokens, index)
 {
@@ -255,6 +246,10 @@ function parseFuncBody(funcBodyNode, tokens, index)
 	const t0 = tokens[index + 0]
 	const t1 = tokens[index + 1]
 	const t2 = tokens[index + 2]
+
+	// Function body ends with "}"
+	if (t0.type === TokenType.punctuation && t0.value === '}')
+		return index + 1
 
 	// Local declaration
 	// int foo;
@@ -264,26 +259,29 @@ function parseFuncBody(funcBodyNode, tokens, index)
 		const varNode = makeNode(funcBodyNode, NodeType.localVar, t1.value, dataTypeMap[t0.value])
 		varNode.tokens  = [t0, t1, t2]
 		funcBodyNode.nodes.push(varNode)
-		parseFuncBody(funcBodyNode, tokens, index + 3)
-		return
-	}
 
-	index = parseForm(funcBodyNode, tokens, index)
+		return parseFuncBody(funcBodyNode, tokens, index + 3)
+	}
 
 	// Function return
 	// return expression;
 	if (t0.type === TokenType.word && t0.value === 'return') {
 		const returnNode = makeNode(funcBodyNode, NodeType.return, funcBodyNode.value, funcBodyNode.dataType)
-		returnNode.tokens  = [t0]
-
-		parseExpression(returnNode, tokens, index + 1)
-
+		returnNode.tokens = [t0]
 		funcBodyNode.nodes.push(returnNode)
-		return
+
+		index = parseExpression(returnNode, tokens, index + 1)
+
+		const tokenCloseBody = tokens[index]
+		if (tokenCloseBody.type === TokenType.punctuation && tokenCloseBody.value === '}')
+			return index + 1
+
+		throw new Error('Found symbols after function return: ' + tokenCloseBody.value)
 	}
 
-	// noinspection UnnecessaryReturnStatementJS
-	return
+	index = parseForm(funcBodyNode, tokens, index)
+
+	return parseFuncBody(funcBodyNode, tokens, index)
 }
 
 /**
@@ -317,13 +315,12 @@ function parseForm(parentNode, tokens, index)
 		assignmentNode.tokens = [t0, t1]
 		assignmentNode.nodes  = [varNode]
 
-		index = parseExpression(assignmentNode, tokens, index + 2)
-
 		parentNode.nodes.push(assignmentNode)
-		return parseForm(parentNode, tokens, index)
+
+		return parseExpression(assignmentNode, tokens, index + 2)
 	}
 
-	return index
+	throw new Error('Unreachable parseForm')
 }
 
 /**
@@ -340,10 +337,9 @@ function parseExpression(parentNode, tokens, index)
 {
 	// noinspection PointlessArithmeticExpressionJS
 	const t0 = tokens[index + 0]
-	const t1 = tokens[index + 1]
 
-	const isExpressionEnd = (token) =>
-		token.type === TokenType.punctuation && [';', ',', ')'].includes(token.value)
+	if (t0.type === TokenType.punctuation && [';', ',', ')'].includes(t0.value))
+		return index + 1
 
 	// Open parenthesis
 	if (t0.type === TokenType.punctuation && t0.value === '(') {
@@ -353,9 +349,8 @@ function parseExpression(parentNode, tokens, index)
 	}
 
 	// Number
-	// 42;
-	if (t0.type === TokenType.number &&
-		isExpressionEnd(t1)) {
+	// 42
+	if (t0.type === TokenType.number) {
 		const value = parentNode.dataType === DataType.i32 || parentNode.dataType === DataType.i64
 			? parseInt(t0.value)
 			: parseFloat(t0.value)
@@ -364,22 +359,21 @@ function parseExpression(parentNode, tokens, index)
 		numberNode.tokens = [t0]
 		parentNode.nodes.push(numberNode)
 
-		return index + 2
+		return parseExpression(parentNode, tokens, index + 1)
 	}
 
 	// Variable lookup
-	// foo;
-	if (t0.type === TokenType.word &&
-		isExpressionEnd(t1)) {
+	// foo
+	if (t0.type === TokenType.word) {
 		const variableNode = lookupVar(parentNode, t0.value)
 		if (variableNode === null)
 			throw new Error('Cannot find a variable: ' + t0.value)
 		parentNode.nodes.push(variableNode)
 
-		return index + 2
+		return parseExpression(parentNode, tokens, index + 1)
 	}
 
-	return index
+	throw new Error('Unreachable parseExpression')
 }
 
 /**

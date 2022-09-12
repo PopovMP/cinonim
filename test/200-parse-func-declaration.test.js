@@ -72,4 +72,28 @@ describe('func declaration', () => {
 		strictEqual(funcBody.value, 'baz')
 		strictEqual(funcBody.dataType, DataType.void)
 	})
+
+	it('parse several functions', () => {
+		const src = `
+		int    foo() { }
+		double bar(int a) { }
+		void   baz(float a, double b) { }
+		`
+		const [funcFoo, funcBar, funcBaz] = parseModule(src)
+
+		strictEqual(typeof funcFoo,   'object',           'funcFoo must be an object')
+		strictEqual(funcFoo.type,     NodeType.function,  'funcFoo.type must be NodeType.function')
+		strictEqual(funcFoo.value,    'foo',              'funcFoo.value must be "foo"')
+		strictEqual(funcFoo.dataType, DataType.i32,       'funcFoo.dataType must be i32')
+
+		strictEqual(typeof funcBar,   'object',           'funcBar must be an object')
+		strictEqual(funcBar.type,     NodeType.function,  'funcBar.type must be NodeType.function')
+		strictEqual(funcBar.value,    'bar',              'funcBar.value must be "bar"')
+		strictEqual(funcBar.dataType, DataType.f64,       'funcBar.dataType must be f64')
+
+		strictEqual(typeof funcBaz,   'object',           'funcBaz must be an object')
+		strictEqual(funcBaz.type,     NodeType.function,  'funcBaz.type must be NodeType.function')
+		strictEqual(funcBaz.value,    'baz',              'funcBaz.value must be "baz"')
+		strictEqual(funcBaz.dataType, DataType.void,      'funcBaz.dataType must be void')
+	})
 })
