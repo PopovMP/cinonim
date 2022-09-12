@@ -56,6 +56,59 @@ describe('variable set', () => {
 		strictEqual(expressionNode.dataType, DataType.i32,     'expressionNode.dataType must be i32')
 	})
 
+	it('set two local variable', () => {
+		const src = `
+			void foo() {
+				int   bar;
+				float baz;
+				bar =   42;
+				baz = 3.14;
+			}`
+		const funcNode = parseModule(src)[0]
+		const [_, funcBody] = funcNode.nodes
+		const [localBar, localBaz, assignBar, assignBaz] = funcBody.nodes
+
+		strictEqual(typeof localBar,     'object',            'localBar must be an object')
+		strictEqual(localBar.type,       NodeType.localVar,   'localBar.type must be NodeType.localVar')
+		strictEqual(localBar.value,      'bar',               'localBar.value must be "bar"')
+		strictEqual(localBar.dataType,   DataType.i32,        'localBar.dataType must be i32')
+
+		strictEqual(typeof localBaz,     'object',            'localBaz must be an object')
+		strictEqual(localBaz.type,       NodeType.localVar,   'localBaz.type must be NodeType.localVar')
+		strictEqual(localBaz.value,      'baz',               'localBaz.value must be "baz"')
+		strictEqual(localBaz.dataType,   DataType.f32,        'localBaz.dataType must be f32')
+
+		strictEqual(typeof assignBar,   'object',            'assignBar must be an object')
+		strictEqual(assignBar.type,     NodeType.assignment, 'assignBar.type must be NodeType.assignment')
+		strictEqual(assignBar.value,    'bar',               'assignBar.value must be "bar"')
+		strictEqual(assignBar.dataType, DataType.i32,        'assignBar.dataType must be i32')
+
+		const [varBar, exprBar] = assignBar.nodes
+
+		strictEqual(typeof varBar,   'object',          'varBar must be an object')
+		strictEqual(varBar.type,     NodeType.localVar, 'varBar.type must be NodeType.localVar')
+		strictEqual(varBar.value,    'bar',             'varBar.value must be "bar')
+		strictEqual(varBar.dataType, DataType.i32,      'varBar.dataType must be i32')
+
+		strictEqual(typeof exprBar,   'object',         'exprBar must be an object')
+		strictEqual(exprBar.type,     NodeType.number,  'exprBar.type must be NodeType.number')
+		strictEqual(exprBar.value,    42,               'exprBar.value must be 42')
+		strictEqual(exprBar.dataType, DataType.i32,     'exprBar.dataType must be i32')
+
+		const [varBaz, exprBaz] = assignBaz.nodes
+
+		strictEqual(typeof varBaz,   'object',          'varBaz must be an object')
+		strictEqual(varBaz.type,     NodeType.localVar, 'varBaz.type must be NodeType.localVar')
+		strictEqual(varBaz.value,    'baz',             'varBaz.value must be "baz')
+		strictEqual(varBaz.dataType, DataType.f32,      'varBaz.dataType must be f32')
+
+		strictEqual(typeof exprBaz,   'object',         'exprBaz must be an object')
+		strictEqual(exprBaz.type,     NodeType.number,  'exprBaz.type must be NodeType.number')
+		strictEqual(exprBaz.value,    3.14,             'exprBaz.value must be 3.14')
+		strictEqual(exprBaz.dataType, DataType.f32,     'exprBaz.dataType must be f32')
+
+	})
+
 	it('set function parameter', () => {
 		const src = `
 			void foo(float bar) {
