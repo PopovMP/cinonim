@@ -13,7 +13,6 @@
  * @property {string}    type
  * @property {*}         value    - value
  * @property {string}    dataType - na, i32, i64, f32, f64, string, char, void
- * @property {string}    scope    - global, local
  * @property {Node[]}    nodes    - list of underlying nodes
  * @property {Token[]}   tokens
  * @property {Node|null} parent
@@ -43,13 +42,8 @@ const NodeType = {
 	number     : 'number',
 	parameter  : 'parameter',
 	variable   : 'variable',
-	assignment : 'assignment'
-}
-
-const Scope = {
-	na    : 'na',
-	global: 'global',
-	locale: 'local',
+	assignment : 'assignment',
+	return     : 'return',
 }
 
 const DataType = {
@@ -94,7 +88,6 @@ function makeNode(parent, type, value = undefined, dataType = DataType.na)
 		type,
 		value,
 		dataType,
-		scope   : Scope.na,
 		nodes   : [],
 		tokens  : [],
 	}
@@ -122,7 +115,6 @@ function isDataType(token)
 function parse(tokens)
 {
 	const wasmModule = makeNode(null, NodeType.module)
-	wasmModule.scope = Scope.global
 
 	const index = 0
 	parserLoop(tokens, index, wasmModule)
@@ -150,19 +142,16 @@ function parserLoop(tokens, index, node)
 	const t5 = tokens[index + 5]
 
 	// Global variable: int foo = 42;
-	if (node.scope === Scope.global &&
-		isDataType(t0) &&
+	if (isDataType(t0) &&
 		t1.type === TokenType.word &&
 		t2.type === TokenType.operator && t2.value === '=') {
 
 		const dataType = dataTypeMap[t0.value]
 
 		const globalVar = makeNode(node, NodeType.globalVar, t1.value, dataType)
-		globalVar.scope  = Scope.global
 		globalVar.tokens = [t0, t1, t2, t3, t4]
 
 		const varNode = makeNode(globalVar, NodeType.variable, t1.value)
-		varNode.scope    = Scope.global
 		varNode.dataType = dataType
 		varNode.tokens   = [t1]
 
@@ -175,8 +164,7 @@ function parserLoop(tokens, index, node)
 	}
 
 	// Global const: const int foo = 42;
-	if (node.scope === Scope.global &&
-		t0.type === TokenType.word && t0.value === 'const' &&
+	if (t0.type === TokenType.word && t0.value === 'const' &&
 		isDataType(t1) &&
 		t2.type === TokenType.word &&
 		t3.type === TokenType.operator && t3.value === '=') {
@@ -184,11 +172,9 @@ function parserLoop(tokens, index, node)
 		const dataType = dataTypeMap[t1.value]
 
 		const globalConst = makeNode(node, NodeType.globalConst, t2.value, dataType)
-		globalConst.scope  = Scope.global
 		globalConst.tokens = [t0, t1, t2, t3, t4, t5]
 
 		const varNode = makeNode(globalConst, NodeType.variable, t2.value, dataType)
-		varNode.scope  = Scope.global
 		varNode.tokens = [t2]
 
 		const numberNode = parseExpression(globalConst, tokens, index + 4)
@@ -200,8 +186,7 @@ function parserLoop(tokens, index, node)
 	}
 
 	// Function declaration: int foo(int bar, int baz) { }
-	if (node.scope === Scope.global &&
-		isDataType(t0) &&
+	if (isDataType(t0) &&
 		t1.type === TokenType.word &&
 		t2.type === TokenType.punctuation && t2.value === '(') {
 
@@ -225,7 +210,6 @@ function parserLoop(tokens, index, node)
 			const paramName  = tParamName.value
 
 			const param = makeNode(funcParams, NodeType.parameter, paramName, dataType)
-			param.scope  = Scope.locale
 			param.tokens = [tDataType, tParamName]
 
 			funcParams.nodes.push(param)
@@ -303,7 +287,6 @@ function parseFuncBody(funcBodyNode, tokens, index)
 		t1.type === TokenType.word &&
 		t2.type === TokenType.punctuation && t2.value === ';') {
 		const varNode = makeNode(funcBodyNode, NodeType.localVar, t1.value, dataTypeMap[t0.value])
-		varNode.scope   = Scope.locale
 		varNode.tokens  = [t0, t1, t2]
 		funcBodyNode.nodes.push(varNode)
 		parseFuncBody(funcBodyNode, tokens, index + 3)
@@ -320,11 +303,9 @@ function parseFuncBody(funcBodyNode, tokens, index)
 		if (varNode === null) throw new Error('Cannot find variable or parameter: ' + varName)
 
 		const assignmentNode = makeNode(funcBodyNode, NodeType.assignment, varNode.value, varNode.dataType)
-		assignmentNode.scope   = Scope.locale
 		assignmentNode.tokens  = [t0, t1, t2, t3]
 
 		const expressionNode = parseExpression(assignmentNode, tokens, index + 2)
-		expressionNode.scope = Scope.locale
 		assignmentNode.nodes = [varNode, expressionNode]
 
 		funcBodyNode.nodes.push(assignmentNode)
@@ -370,5 +351,4 @@ module.exports = {
 	parse,
 	NodeType,
 	DataType,
-	Scope,
 }
