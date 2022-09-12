@@ -74,23 +74,16 @@ const dataTypeMap = {
 /**
  * Makes a new node
  *
- * @param {Node|null} parent
- * @param {string}   type
- * @param {*}        [value]
- * @param {string}   [dataType]
+ * @param {Node|null}     parent   - parent Node
+ * @param {string}        type     - NodeType
+ * @param {string|number} value
+ * @param {string}        dataType - DataType
  *
  * @return {Node}
  */
-function makeNode(parent, type, value = undefined, dataType = DataType.na)
+function makeNode(parent, type, value, dataType)
 {
-	return {
-		parent,
-		type,
-		value,
-		dataType,
-		nodes   : [],
-		tokens  : [],
-	}
+	return {parent, type, value, dataType, nodes: [], tokens: []}
 }
 
 /**
@@ -114,7 +107,7 @@ function isDataType(token)
  */
 function parse(tokens)
 {
-	const wasmModule = makeNode(null, NodeType.module)
+	const wasmModule = makeNode(null, NodeType.module, 'module', DataType.na)
 
 	const index = 0
 	parseModule(tokens, index, wasmModule)
@@ -153,13 +146,12 @@ function parseModule(tokens, index, node)
 		const globalVar = makeNode(node, NodeType.globalVar, t1.value, dataType)
 		globalVar.tokens = [t0, t1, t2, t3, t4]
 
-		const varNode = makeNode(globalVar, NodeType.variable, t1.value)
-		varNode.dataType = dataType
+		const varNode = makeNode(globalVar, NodeType.variable, t1.value, dataType)
 		varNode.tokens   = [t1]
 
-		const numberNode = parseExpression(globalVar, tokens, index + 3)
+		globalVar.nodes.push(varNode)
 
-		globalVar.nodes = [varNode, numberNode]
+		parseExpression(globalVar, tokens, index + 3)
 
 		node.nodes.push(globalVar)
 		parseModule(tokens, index + 5, node)
@@ -180,9 +172,9 @@ function parseModule(tokens, index, node)
 		const varNode = makeNode(globalConst, NodeType.variable, t2.value, dataType)
 		varNode.tokens = [t2]
 
-		const numberNode = parseExpression(globalConst, tokens, index + 4)
+		globalConst.nodes.push(varNode)
 
-		globalConst.nodes = [varNode, numberNode]
+		parseExpression(globalConst, tokens, index + 4)
 
 		node.nodes.push(globalConst)
 		parseModule(tokens, index + 6, node)
@@ -200,7 +192,7 @@ function parseModule(tokens, index, node)
 		const functionNode = makeNode(node, NodeType.function, funcName, dataType)
 
 		// Function parameters
-		const funcParams = makeNode(functionNode, NodeType.funcParams, funcName)
+		const funcParams = makeNode(functionNode, NodeType.funcParams, funcName, DataType.na)
 		let endIndex = index + 3
 		for (;;endIndex++) {
 			const tkn = tokens[endIndex]
@@ -263,7 +255,6 @@ function parseFuncBody(funcBodyNode, tokens, index)
 	const t0 = tokens[index + 0]
 	const t1 = tokens[index + 1]
 	const t2 = tokens[index + 2]
-	const t3 = tokens[index + 3]
 
 	// Local declaration
 	// int foo;
@@ -287,10 +278,10 @@ function parseFuncBody(funcBodyNode, tokens, index)
 		if (varNode === null) throw new Error('Cannot find variable or parameter: ' + varName)
 
 		const assignmentNode = makeNode(funcBodyNode, NodeType.assignment, varNode.value, varNode.dataType)
-		assignmentNode.tokens  = [t0, t1, t2, t3]
+		assignmentNode.tokens = [t0, t1]
+		assignmentNode.nodes  = [varNode]
 
-		const expressionNode = parseExpression(assignmentNode, tokens, index + 2)
-		assignmentNode.nodes = [varNode, expressionNode]
+		parseExpression(assignmentNode, tokens, index + 2)
 
 		funcBodyNode.nodes.push(assignmentNode)
 		parseFuncBody(funcBodyNode, tokens, index + 4)
@@ -302,8 +293,7 @@ function parseFuncBody(funcBodyNode, tokens, index)
 		const returnNode = makeNode(funcBodyNode, NodeType.return, funcBodyNode.value, funcBodyNode.dataType)
 		returnNode.tokens  = [t0]
 
-		const expressionNode = parseExpression(returnNode, tokens, index + 1)
-		returnNode.nodes = [expressionNode]
+		parseExpression(returnNode, tokens, index + 1)
 
 		funcBodyNode.nodes.push(returnNode)
 		return
@@ -316,26 +306,31 @@ function parseFuncBody(funcBodyNode, tokens, index)
 /**
  * Parses an expression
  *
- * @param {Node}    node
+ * @param {Node}    parentNode
  * @param {Token[]} tokens
  * @param {number}  index
  *
- * @return {Node}
+ * @return {void}
  */
-function parseExpression(node, tokens, index)
+function parseExpression(parentNode, tokens, index)
 {
 	// noinspection PointlessArithmeticExpressionJS
 	const t0 = tokens[index + 0]
 
+	// Number
 	if (t0.type === TokenType.number) {
-		const value = node.dataType === DataType.i32 || node.dataType === DataType.i64
+		const value = parentNode.dataType === DataType.i32 || parentNode.dataType === DataType.i64
 			? parseInt(t0.value)
 			: parseFloat(t0.value)
-		const numberNode = makeNode(node, NodeType.number, value, node.dataType)
+		const numberNode = makeNode(parentNode, NodeType.number, value, parentNode.dataType)
 		numberNode.tokens = [t0]
 
-		return numberNode
+		parentNode.nodes.push(numberNode)
+		return
 	}
+
+	// noinspection UnnecessaryReturnStatementJS
+	return
 }
 
 /**
