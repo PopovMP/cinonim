@@ -109,3 +109,74 @@ void foo() {
 (func $foo
     (global.set $bar (f64.const 3.14)))
 ```
+
+## Node structure
+
+```text
+module
+    +-- [*] globalConst
+    |         +-- variable
+    |         +-- number
+    |
+    +-- [*] globalVar
+    |         +-- variable
+    |         +-- number
+    |
+    +-- [*] function
+              +-- [1] funcParams
+              |          +-- [*] parameter
+              |
+              +-- [1] funcBody
+
+funcBody
+    +-- [*] localVar
+    +-- [*] FORM 
+    +-- [!] return
+              +-- [1] expression
+ 
+FORM => assignment | loop | block | if | funcCall
+
+assignment
+    +-- [1] localVar | parameter | globalVar
+    +-- [1] expression
+
+loop
+    +-- [*] next
+    +-- [*] nextIf
+    +-- [*] FORM
+
+block
+    +-- [*] break
+    +-- [*] breakIf
+    +-- [*] FORM
+
+if
+    +-- [1] expression
+    +-- [1] then
+    |        +-- [*] FORM
+    +-- [1] else
+             +-- [*] FORM
+
+nextIf
+    +-- [1] expression
+
+breakIf
+    +-- [1] expression
+
+expression
+    +-- [!] number
+    +-- [!] unOperator
+    +-- [!] binOperator
+    +-- [!] expression
+    +-- [!] funcCall
+    +-- [!] varLookup
+
+unOperator
+    +-- [1] expression
+
+binOperator
+    +-- [2] expression
+
+funcCall
+    +-- [*] expression
+```
