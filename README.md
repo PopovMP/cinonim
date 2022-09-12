@@ -114,69 +114,58 @@ void foo() {
 
 ```text
 module
-    +-- [*] globalConst
-    |         +-- variable
-    |         +-- number
-    |
     +-- [*] globalVar
-    |         +-- variable
-    |         +-- number
+    |           +-- [1] variable
+    |           \-- [1] number
     |
-    +-- [*] function
-              +-- [1] funcParams
-              |          +-- [*] parameter
-              |
-              +-- [1] funcBody
-
-funcBody
-    +-- [*] localVar
-    +-- [*] FORM 
-    +-- [!] return
-              +-- [1] expression
+    +-- [*] globalConst
+    |           +-- [1] variable
+    |           +-- [1] number
+    |
+    \-- [*] function
+                +-- [1] funcParams
+                |           \-- [*] parameter
+                |
+                \-- [1] funcBody
+                            +-- [*] localVar
+                            +-- [*] FORM 
+                            \-- [!] return
+                                      \-- [1] expression
  
 FORM => assignment | loop | block | if | funcCall
 
 assignment
     +-- [1] localVar | parameter | globalVar
-    +-- [1] expression
+    \-- [1] expression
 
 loop
     +-- [*] next
     +-- [*] nextIf
-    +-- [*] FORM
+    |           \-- [1] expression
+    \-- [*] FORM
 
 block
     +-- [*] break
     +-- [*] breakIf
-    +-- [*] FORM
+    |           \-- [1] expression
+    \-- [*] FORM
 
 if
     +-- [1] expression
     +-- [1] then
-    |        +-- [*] FORM
-    +-- [1] else
-             +-- [*] FORM
-
-nextIf
-    +-- [1] expression
-
-breakIf
-    +-- [1] expression
+    |           \-- [*] FORM
+    \-- [!] else
+                \-- [*] FORM
 
 expression
     +-- [!] number
-    +-- [!] unOperator
-    +-- [!] binOperator
+    +-- [!] unaryOp
+    |           \-- [1] expression
+    +-- [!] binaryOp
+    |           +-- [1] expression
+    |           \-- [1] expression
     +-- [!] expression
     +-- [!] funcCall
-    +-- [!] varLookup
-
-unOperator
-    +-- [1] expression
-
-binOperator
-    +-- [2] expression
-
-funcCall
-    +-- [*] expression
+    |           \-- [*] expression
+    \-- [!] varLookup
 ```
