@@ -275,7 +275,10 @@ function parseFuncBody(funcBodyNode, tokens, index)
 		const varName = t0.value
 
 		const varNode = lookupVar(funcBodyNode, varName)
-		if (varNode === null) throw new Error('Cannot find variable or parameter: ' + varName)
+		if (varNode === null)
+			throw new Error('Cannot find a variable: ' + varName)
+		if (varNode.type === NodeType.globalConst)
+			throw new Error('Cannot assign value to a constant: ' + varName)
 
 		const assignmentNode = makeNode(funcBodyNode, NodeType.assignment, varNode.value, varNode.dataType)
 		assignmentNode.tokens = [t0, t1]
@@ -329,38 +332,54 @@ function parseExpression(parentNode, tokens, index)
 		return
 	}
 
+	// Variable lookup
+	if (t0.type === TokenType.word) {
+		const variableNode = lookupVar(parentNode, t0.value)
+		if (variableNode === null)
+			throw new Error('Cannot find a variable: ' + t0.value)
+		parentNode.nodes.push(variableNode)
+		return
+	}
+
 	// noinspection UnnecessaryReturnStatementJS
 	return
 }
 
 /**
- * Searches a global var, a function parameter or a local variable.
+ * Searches a local variable, a function parameter or a global var/const.
  *
- * @param {Node|null} node
+ * @param {Node|null} parentNode
  * @param {string}    varName
  *
  * @return {Node|null}
  */
-function lookupVar(node, varName)
+function lookupVar(parentNode, varName)
 {
-	if (node === null) return node
+	if (parentNode === null) return parentNode
 
-	for (const nd of node.nodes) {
-		if (nd.type === NodeType.localVar && nd.value === varName)
-			return nd
+	for (const node of parentNode.nodes) {
+		// Local variable
+		if (node.type === NodeType.localVar && node.value === varName)
+			return node
 
-		if (nd.type === NodeType.funcParams) {
-			for (const par of nd.nodes) {
+		// Function parameter
+		if (node.type === NodeType.funcParams) {
+			for (const par of node.nodes) {
 				if (par.value === varName)
 					return par
 			}
 		}
 
-		if (nd.type === NodeType.globalVar && nd.value === varName)
-			return nd
+		// Global variable
+		if (node.type === NodeType.globalVar && node.value === varName)
+			return node
+
+		// Global const
+		if (node.type === NodeType.globalConst && node.value === varName)
+			return node
 	}
 
-	return lookupVar(node.parent, varName)
+	return lookupVar(parentNode.parent, varName)
 }
 
 module.exports = {
