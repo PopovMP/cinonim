@@ -117,19 +117,21 @@ function parse(tokens)
 	const wasmModule = makeNode(null, NodeType.module)
 
 	const index = 0
-	parserLoop(tokens, index, wasmModule)
+	parseModule(tokens, index, wasmModule)
 
 	return wasmModule
 }
 
 /**
- * Parses a token
+ * Parses a token in a module's global state
  *
  * @param {Token[]} tokens
  * @param {number} index - current token index
  * @param {Node} node
+ *
+ * @return {void}
  */
-function parserLoop(tokens, index, node)
+function parseModule(tokens, index, node)
 {
 	if (index === tokens.length) return
 
@@ -160,7 +162,8 @@ function parserLoop(tokens, index, node)
 		globalVar.nodes = [varNode, numberNode]
 
 		node.nodes.push(globalVar)
-		return parserLoop(tokens, index + 5, node)
+		parseModule(tokens, index + 5, node)
+		return
 	}
 
 	// Global const: const int foo = 42;
@@ -182,7 +185,8 @@ function parserLoop(tokens, index, node)
 		globalConst.nodes = [varNode, numberNode]
 
 		node.nodes.push(globalConst)
-		return parserLoop(tokens, index + 6, node)
+		parseModule(tokens, index + 6, node)
+		return
 	}
 
 	// Function declaration: int foo(int bar, int baz) { }
@@ -195,6 +199,7 @@ function parserLoop(tokens, index, node)
 
 		const functionNode = makeNode(node, NodeType.function, funcName, dataType)
 
+		// Function parameters
 		const funcParams = makeNode(functionNode, NodeType.funcParams, funcName)
 		let endIndex = index + 3
 		for (;;endIndex++) {
@@ -215,9 +220,9 @@ function parserLoop(tokens, index, node)
 			funcParams.nodes.push(param)
 		}
 
-		const funcBody = makeNode(functionNode, NodeType.funcBody, funcName, dataType)
 
 		// Function body
+		const funcBody = makeNode(functionNode, NodeType.funcBody, funcName, dataType)
 		endIndex += 2
 		const bodyStart = endIndex
 		for (let openBraces = 1; openBraces > 0; endIndex++) {
@@ -235,33 +240,12 @@ function parserLoop(tokens, index, node)
 
 		parseFuncBody(funcBody, tokens.slice(bodyStart, bodyEnd), 0)
 
-		return parserLoop(tokens, endIndex, node)
+		parseModule(tokens, endIndex, node)
+		return
 	}
-}
 
-/**
- * Parses an expression
- *
- * @param {Node}    node
- * @param {Token[]} tokens
- * @param {number}  index
- *
- * @return {Node}
- */
-function parseExpression(node, tokens, index)
-{
-	// noinspection PointlessArithmeticExpressionJS
-	const t0 = tokens[index + 0]
-
-	if (t0.type === TokenType.number) {
-		const value = node.dataType === DataType.i32 || node.dataType === DataType.i64
-			? parseInt(t0.value)
-			: parseFloat(t0.value)
-		const numberNode = makeNode(node, NodeType.number, value, node.dataType)
-		numberNode.tokens = [t0]
-
-		return numberNode
-	}
+	// noinspection UnnecessaryReturnStatementJS
+	return
 }
 
 /**
@@ -299,7 +283,7 @@ function parseFuncBody(funcBodyNode, tokens, index)
 		t1.type === TokenType.operator && t1.value === '=') {
 		const varName = t0.value
 
-		const varNode = lookup(funcBodyNode, varName)
+		const varNode = lookupVar(funcBodyNode, varName)
 		if (varNode === null) throw new Error('Cannot find variable or parameter: ' + varName)
 
 		const assignmentNode = makeNode(funcBodyNode, NodeType.assignment, varNode.value, varNode.dataType)
@@ -318,14 +302,39 @@ function parseFuncBody(funcBodyNode, tokens, index)
 }
 
 /**
+ * Parses an expression
+ *
+ * @param {Node}    node
+ * @param {Token[]} tokens
+ * @param {number}  index
+ *
+ * @return {Node}
+ */
+function parseExpression(node, tokens, index)
+{
+	// noinspection PointlessArithmeticExpressionJS
+	const t0 = tokens[index + 0]
+
+	if (t0.type === TokenType.number) {
+		const value = node.dataType === DataType.i32 || node.dataType === DataType.i64
+			? parseInt(t0.value)
+			: parseFloat(t0.value)
+		const numberNode = makeNode(node, NodeType.number, value, node.dataType)
+		numberNode.tokens = [t0]
+
+		return numberNode
+	}
+}
+
+/**
  * Searches a global var, a function parameter or a local variable.
  *
- * @param {Node|null}   node
- * @param {string} varName
+ * @param {Node|null} node
+ * @param {string}    varName
  *
  * @return {Node|null}
  */
-function lookup(node, varName)
+function lookupVar(node, varName)
 {
 	if (node === null) return node
 
@@ -344,7 +353,7 @@ function lookup(node, varName)
 			return nd
 	}
 
-	return lookup(node.parent, varName)
+	return lookupVar(node.parent, varName)
 }
 
 module.exports = {
