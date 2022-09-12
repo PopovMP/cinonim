@@ -297,6 +297,18 @@ function parseFuncBody(funcBodyNode, tokens, index)
 		return
 	}
 
+	// Function return
+	if (t0.type === TokenType.word && t0.value === 'return') {
+		const returnNode = makeNode(funcBodyNode, NodeType.return, funcBodyNode.value, funcBodyNode.dataType)
+		returnNode.tokens  = [t0]
+
+		const expressionNode = parseExpression(returnNode, tokens, index + 1)
+		returnNode.nodes = [expressionNode]
+
+		funcBodyNode.nodes.push(returnNode)
+		return
+	}
+
 	// noinspection UnnecessaryReturnStatementJS
 	return
 }
