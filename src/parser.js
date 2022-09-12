@@ -32,19 +32,26 @@ const TokenType = {
 }
 
 const NodeType = {
+	assignment : 'assignment',
+	block      : 'block',
+	break      : 'break',
+	else       : 'else',
 	expression : 'expression',
 	funcBody   : 'funcBody',
 	funcParams : 'funcParams',
 	function   : 'function',
 	globalConst: 'globalConst',
 	globalVar  : 'globalVar',
+	if         : 'if',
 	localVar   : 'localVar',
+	loop       : 'loop',
 	module     : 'module',
+	next       : 'next',
 	number     : 'number',
 	parameter  : 'parameter',
-	variable   : 'variable',
-	assignment : 'assignment',
 	return     : 'return',
+	then       : 'then',
+	variable   : 'variable',
 }
 
 const DataType = {
@@ -56,6 +63,7 @@ const DataType = {
 	string: 'string',
 	char  : 'char',
 	void  : 'void',
+	number: 'number'
 }
 
 /** @type {string[]} */
@@ -263,25 +271,7 @@ function parseFuncBody(funcBodyNode, tokens, index)
 		return parseFuncBody(funcBodyNode, tokens, index + 3)
 	}
 
-	// Function return
-	// return expression;
-	if (t0.type === TokenType.word && t0.value === 'return') {
-		const returnNode = makeNode(funcBodyNode, NodeType.return, funcBodyNode.value, funcBodyNode.dataType)
-		returnNode.tokens = [t0]
-		funcBodyNode.nodes.push(returnNode)
-
-		index = parseExpression(returnNode, tokens, index + 1)
-
-		const tokenCloseBody = tokens[index]
-		if (tokenCloseBody.type === TokenType.punctuation && tokenCloseBody.value === '}')
-			return index + 1
-
-		throw new Error('Found symbols after function return: ' + tokenCloseBody.value)
-	}
-
-	index = parseForm(funcBodyNode, tokens, index)
-
-	return parseFuncBody(funcBodyNode, tokens, index)
+	return parseForm(funcBodyNode, tokens, index)
 }
 
 /**
@@ -298,6 +288,66 @@ function parseForm(parentNode, tokens, index)
 	// noinspection PointlessArithmeticExpressionJS
 	const t0 = tokens[index + 0]
 	const t1 = tokens[index + 1]
+
+	// Form ends with "}"
+	if (t0.type === TokenType.punctuation && t0.value === '}')
+		return index + 1
+
+	// Function return
+	// return expression;
+	if (t0.type === TokenType.word && t0.value === 'return') {
+		const returnNode = makeNode(parentNode, NodeType.return, parentNode.value, parentNode.dataType)
+		returnNode.tokens = [t0]
+		parentNode.nodes.push(returnNode)
+
+		index = parseExpression(returnNode, tokens, index + 1)
+
+		const tokenCloseBody = tokens[index]
+		if (tokenCloseBody.type === TokenType.punctuation && tokenCloseBody.value === '}')
+			return index + 1
+
+		throw new Error('Found symbols after function return: ' + tokenCloseBody.value)
+	}
+
+	// break;
+	if (t0.type === TokenType.word && t0.value === 'break' &&
+		t1.type === TokenType.punctuation && t1.value === ';') {
+		const breakNode = makeNode(parentNode, NodeType.break, 'break', DataType.na)
+		breakNode.tokens = [t0, t1]
+		parentNode.nodes.push(breakNode)
+		return parseForm(parentNode, tokens, index + 2)
+	}
+
+	// next;
+	if (t0.type === TokenType.word && t0.value === 'next' &&
+		t1.type === TokenType.punctuation && t1.value === ';') {
+		const nextNode = makeNode(parentNode, NodeType.next, 'next', DataType.na)
+		nextNode.tokens = [t0, t1]
+		parentNode.nodes.push(nextNode)
+		return parseForm(parentNode, tokens, index + 2)
+	}
+
+	// loop {
+	if (t0.type === TokenType.word && t0.value === 'loop' &&
+		t1.type === TokenType.punctuation && t1.value === '{') {
+		const loopNode = makeNode(parentNode, NodeType.loop, 'loop', DataType.na)
+		loopNode.tokens = [t0, t1]
+		parentNode.nodes.push(loopNode)
+		index = parseForm(loopNode, tokens, index + 2)
+
+		return parseForm(parentNode, tokens, index)
+	}
+
+	// block {
+	if (t0.type === TokenType.word && t0.value === 'block' &&
+		t1.type === TokenType.punctuation && t1.value === '{') {
+		const blockNode = makeNode(parentNode, NodeType.block, 'block', DataType.na)
+		blockNode.tokens = [t0, t1]
+		parentNode.nodes.push(blockNode)
+		index = parseForm(blockNode, tokens, index + 2)
+
+		return parseForm(parentNode, tokens, index)
+	}
 
 	// Assignment
 	// foo = expression;
@@ -317,7 +367,40 @@ function parseForm(parentNode, tokens, index)
 
 		parentNode.nodes.push(assignmentNode)
 
-		return parseExpression(assignmentNode, tokens, index + 2)
+		index = parseExpression(assignmentNode, tokens, index + 2)
+
+		return parseForm(parentNode, tokens, index)
+	}
+
+	// if (expression) { FORM }
+	// if (expression) { FORM } else { FORM }
+	if (t0.type === TokenType.word && t0.value === 'if' &&
+		t1.type === TokenType.punctuation && t1.value === '(') {
+
+		const ifNode = makeNode(parentNode, NodeType.if, 'if', DataType.na)
+		ifNode.tokens = [t0, t1]
+		parentNode.nodes.push(ifNode)
+
+		const predicate = makeNode(ifNode, NodeType.expression, 'predicate', DataType.number)
+		ifNode.nodes.push(predicate)
+
+		index = parseExpression(predicate, tokens, index + 3)
+
+		const then = makeNode(ifNode, NodeType.then, 'then', DataType.na)
+		then.tokens.push(tokens[index])
+		ifNode.nodes.push(then)
+
+		index = parseForm(then, tokens, index + 1)
+
+		if (tokens[index].type === TokenType.word && tokens[index].value === 'else') {
+			const elseNode = makeNode(ifNode, NodeType.else, 'else', DataType.na)
+			elseNode.tokens.push(tokens[index])
+			ifNode.nodes.push(elseNode)
+
+			index = parseForm(elseNode, tokens, index + 2)
+		}
+
+		return parseForm(parentNode, tokens, index)
 	}
 
 	throw new Error('Unreachable parseForm')
