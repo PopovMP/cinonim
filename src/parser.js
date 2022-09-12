@@ -32,6 +32,7 @@ const TokenType = {
 }
 
 const NodeType = {
+	expression : 'expression',
 	funcBody   : 'funcBody',
 	funcParams : 'funcParams',
 	function   : 'function',
@@ -267,9 +268,10 @@ function parseFuncBody(funcBodyNode, tokens, index)
 		return
 	}
 
-	parseForm(funcBodyNode, tokens, index)
+	index = parseForm(funcBodyNode, tokens, index)
 
 	// Function return
+	// return expression;
 	if (t0.type === TokenType.word && t0.value === 'return') {
 		const returnNode = makeNode(funcBodyNode, NodeType.return, funcBodyNode.value, funcBodyNode.dataType)
 		returnNode.tokens  = [t0]
@@ -291,7 +293,7 @@ function parseFuncBody(funcBodyNode, tokens, index)
  * @param {Token[]} tokens
  * @param {number}  index
  *
- * @return {void}
+ * @return {number} - endIndex
  */
 function parseForm(parentNode, tokens, index)
 {
@@ -300,7 +302,7 @@ function parseForm(parentNode, tokens, index)
 	const t1 = tokens[index + 1]
 
 	// Assignment
-	// foo = 42;
+	// foo = expression;
 	if (t0.type === TokenType.word &&
 		t1.type === TokenType.operator && t1.value === '=') {
 		const varName = t0.value
@@ -315,54 +317,69 @@ function parseForm(parentNode, tokens, index)
 		assignmentNode.tokens = [t0, t1]
 		assignmentNode.nodes  = [varNode]
 
-		parseExpression(assignmentNode, tokens, index + 2)
+		index = parseExpression(assignmentNode, tokens, index + 2)
 
 		parentNode.nodes.push(assignmentNode)
-		parseForm(parentNode, tokens, index + 4)
-		return
+		return parseForm(parentNode, tokens, index)
 	}
 
-	// noinspection UnnecessaryReturnStatementJS
-	return
+	return index
 }
 
 /**
- * Parses an expression
+ * Parses an expression.
+ * An expressions ends with a punctuation: ";"  ")" ",".
  *
  * @param {Node}    parentNode
  * @param {Token[]} tokens
  * @param {number}  index
  *
- * @return {void}
+ * @return {number} - endIndex
  */
 function parseExpression(parentNode, tokens, index)
 {
 	// noinspection PointlessArithmeticExpressionJS
 	const t0 = tokens[index + 0]
+	const t1 = tokens[index + 1]
+
+	const isExpressionEnd = (token) =>
+		token.type === TokenType.punctuation && [';', ',', ')'].includes(token.value)
+
+	// Open parenthesis
+	if (t0.type === TokenType.punctuation && t0.value === '(') {
+		const expressionNode = makeNode(parentNode, NodeType.expression, 'parenthesis', parentNode.dataType)
+		expressionNode.tokens.push(t0)
+		return parseExpression(expressionNode, tokens, index + 1)
+	}
 
 	// Number
-	if (t0.type === TokenType.number) {
+	// 42;
+	if (t0.type === TokenType.number &&
+		isExpressionEnd(t1)) {
 		const value = parentNode.dataType === DataType.i32 || parentNode.dataType === DataType.i64
 			? parseInt(t0.value)
 			: parseFloat(t0.value)
+
 		const numberNode = makeNode(parentNode, NodeType.number, value, parentNode.dataType)
 		numberNode.tokens = [t0]
-
 		parentNode.nodes.push(numberNode)
-		return
+
+		return index + 2
 	}
 
 	// Variable lookup
-	if (t0.type === TokenType.word) {
+	// foo;
+	if (t0.type === TokenType.word &&
+		isExpressionEnd(t1)) {
 		const variableNode = lookupVar(parentNode, t0.value)
 		if (variableNode === null)
 			throw new Error('Cannot find a variable: ' + t0.value)
 		parentNode.nodes.push(variableNode)
-		return
+
+		return index + 2
 	}
 
-	// noinspection UnnecessaryReturnStatementJS
-	return
+	return index
 }
 
 /**
