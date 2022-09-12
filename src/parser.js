@@ -212,7 +212,6 @@ function parseModule(tokens, index, node)
 			funcParams.nodes.push(param)
 		}
 
-
 		// Function body
 		const funcBody = makeNode(functionNode, NodeType.funcBody, funcName, dataType)
 		endIndex += 2
@@ -268,28 +267,7 @@ function parseFuncBody(funcBodyNode, tokens, index)
 		return
 	}
 
-	// Assignment
-	// foo = 42;
-	if (t0.type === TokenType.word &&
-		t1.type === TokenType.operator && t1.value === '=') {
-		const varName = t0.value
-
-		const varNode = lookupVar(funcBodyNode, varName)
-		if (varNode === null)
-			throw new Error('Cannot find a variable: ' + varName)
-		if (varNode.type === NodeType.globalConst)
-			throw new Error('Cannot assign value to a constant: ' + varName)
-
-		const assignmentNode = makeNode(funcBodyNode, NodeType.assignment, varNode.value, varNode.dataType)
-		assignmentNode.tokens = [t0, t1]
-		assignmentNode.nodes  = [varNode]
-
-		parseExpression(assignmentNode, tokens, index + 2)
-
-		funcBodyNode.nodes.push(assignmentNode)
-		parseFuncBody(funcBodyNode, tokens, index + 4)
-		return
-	}
+	parseForm(funcBodyNode, tokens, index)
 
 	// Function return
 	if (t0.type === TokenType.word && t0.value === 'return') {
@@ -299,6 +277,48 @@ function parseFuncBody(funcBodyNode, tokens, index)
 		parseExpression(returnNode, tokens, index + 1)
 
 		funcBodyNode.nodes.push(returnNode)
+		return
+	}
+
+	// noinspection UnnecessaryReturnStatementJS
+	return
+}
+
+/**
+ * Parses a form: assignment | loop | block | if | funcCall
+ *
+ * @param {Node}    parentNode
+ * @param {Token[]} tokens
+ * @param {number}  index
+ *
+ * @return {void}
+ */
+function parseForm(parentNode, tokens, index)
+{
+	// noinspection PointlessArithmeticExpressionJS
+	const t0 = tokens[index + 0]
+	const t1 = tokens[index + 1]
+
+	// Assignment
+	// foo = 42;
+	if (t0.type === TokenType.word &&
+		t1.type === TokenType.operator && t1.value === '=') {
+		const varName = t0.value
+
+		const varNode = lookupVar(parentNode, varName)
+		if (varNode === null)
+			throw new Error('Cannot find a variable: ' + varName)
+		if (varNode.type === NodeType.globalConst)
+			throw new Error('Cannot assign value to a constant: ' + varName)
+
+		const assignmentNode = makeNode(parentNode, NodeType.assignment, varNode.value, varNode.dataType)
+		assignmentNode.tokens = [t0, t1]
+		assignmentNode.nodes  = [varNode]
+
+		parseExpression(assignmentNode, tokens, index + 2)
+
+		parentNode.nodes.push(assignmentNode)
+		parseForm(parentNode, tokens, index + 4)
 		return
 	}
 
