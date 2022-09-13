@@ -42,6 +42,8 @@ describe('block', () => {
 						bar = 1;
 					    branch my_block;
 				    }
+				    branch if (42);
+				    branch my_loop if (bar);
 				}}
 
 				return bar;

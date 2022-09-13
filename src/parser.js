@@ -276,6 +276,7 @@ function parseForm(parentNode, tokens, index)
 	const t0 = tokens[index]
 	const t1 = tokens[index+1]
 	const t2 = tokens[index+2]
+	const t3 = tokens[index+3]
 
 	// Form ends with "}"
 	if (t0.type === TokenType.punctuation && t0.value === '}')
@@ -316,6 +317,39 @@ function parseForm(parentNode, tokens, index)
 		parentNode.nodes.push(branchNode)
 
 		return parseForm(parentNode, tokens, index + 3)
+	}
+
+	// branch if (expression);
+	if (t0.type === TokenType.word && t0.value === 'branch' &&
+		t1.type === TokenType.word && t1.value === 'if'     &&
+		t2.type === TokenType.punctuation && t2.value === '(') {
+		const branchIfNode = makeNode(parentNode, NodeType.branchIf, 0, DataType.na)
+		branchIfNode.tokens = [t0, t1]
+		parentNode.nodes.push(branchIfNode)
+
+		const predicate = makeNode(branchIfNode, NodeType.expression, 'predicate', DataType.number)
+		branchIfNode.nodes.push(predicate)
+
+		index = parseExpression(predicate, tokens, index + 3)
+
+		return parseForm(parentNode, tokens, index + 1)
+	}
+
+	// branch name|index if (expression);
+	if (t0.type === TokenType.word && t0.value === 'branch' &&
+		(t1.type === TokenType.word || t1.type === TokenType.number) &&
+		t2.type === TokenType.word && t2.value === 'if'     &&
+		t3.type === TokenType.punctuation && t3.value === '(') {
+		const branchIfNode = makeNode(parentNode, NodeType.branchIf, t1.value, DataType.na)
+		branchIfNode.tokens = [t0, t1, t2]
+		parentNode.nodes.push(branchIfNode)
+
+		const predicate = makeNode(branchIfNode, NodeType.expression, 'predicate', DataType.number)
+		branchIfNode.nodes.push(predicate)
+
+		index = parseExpression(predicate, tokens, index + 4)
+
+		return parseForm(parentNode, tokens, index + 1)
 	}
 
 	// loop {
