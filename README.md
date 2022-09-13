@@ -7,7 +7,7 @@
   * **long**   -> **i64**
   * **float**  -> **f32**
   * **double** -> **f64**
-  * **void**   -> used as a function return type
+  * **void**   -> **void** used as a function return type
 
 ## Line comment
 
@@ -146,16 +146,18 @@ block {value: ?label}
 branch {value: ?label|index}
 
 branchIf {value: ?label|index}
-    +-- [1] expression
+    +-- [1] predicate {value: '', dataType: i32}
+                \-- [1] expression
 
 funcCall {value: funcName, dataType: funcDataType}
     \-- [*] expression
 
 if
-    +-- [1] expression
+    +-- [1] predicate {value: '', dataType: i32}
+    |           \-- [1] expression
     +-- [1] then
     |           \-- [*] FORM
-    \-- [!] else
+    \-- [?] else
                 \-- [*] FORM
 
 loop {value: ?label}
@@ -165,14 +167,14 @@ return {value: funcName, dataType: funcDataType}
     \-- [1] expression
 
 expression
-    +-- [!] number
-    +-- [!] unaryOp
+    | [1] number
+    | [1] unaryOp
     |           \-- [1] expression
-    +-- [!] binaryOp
+    | [1] binaryOp
     |           +-- [1] expression
     |           \-- [1] expression
-    +-- [!] expression
-    +-- [!] funcCall
+    | [1] expression
+    | [1] funcCall
     |           \-- [*] expression
-    \-- [!] varLookup
+    | [1] varLookup
 ```
