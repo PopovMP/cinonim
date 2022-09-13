@@ -41,7 +41,7 @@ describe('loop', () => {
 
 		strictEqual(typeof loopNode,     'object',      'loopNode must be an object')
 		strictEqual(loopNode.type,       NodeType.loop, 'loopNode.type must be NodeType.loop')
-		strictEqual(loopNode.value,      'loop',        'loopNode.value must be "loop"')
+		strictEqual(loopNode.value,      '',            'loopNode.value must be ""')
 		strictEqual(loopNode.dataType,   DataType.na,   'loopNode.dataType must be na')
 	})
 
@@ -53,7 +53,7 @@ describe('loop', () => {
 				loop {
 					bar = 42;
 				}
-				
+
 				return bar;
 			}`
 		const funcNode = parseModule(src)[0]
@@ -62,7 +62,7 @@ describe('loop', () => {
 
 		strictEqual(typeof loopNode,     'object',      'loopNode must be an object')
 		strictEqual(loopNode.type,       NodeType.loop, 'loopNode.type must be NodeType.loop')
-		strictEqual(loopNode.value,      'loop',        'loopNode.value must be "loop"')
+		strictEqual(loopNode.value,      '',            'loopNode.value must be ""')
 		strictEqual(loopNode.dataType,   DataType.na,   'loopNode.dataType must be na')
 	})
 
@@ -71,13 +71,13 @@ describe('loop', () => {
 			int foo() {
 				int bar;
 
-				loop {
+				loop my_loop {
 					bar = 42;
 					if (bar) { 
-						next;
+						branch my_loop;
 					}
 				}
-				
+
 				return bar;
 			}`
 		const funcNode = parseModule(src)[0]
@@ -86,7 +86,7 @@ describe('loop', () => {
 
 		strictEqual(typeof loopNode,     'object',      'loopNode must be an object')
 		strictEqual(loopNode.type,       NodeType.loop, 'loopNode.type must be NodeType.loop')
-		strictEqual(loopNode.value,      'loop',        'loopNode.value must be "loop"')
+		strictEqual(loopNode.value,      'my_loop',     'loopNode.value must be "my_loop"')
 		strictEqual(loopNode.dataType,   DataType.na,   'loopNode.dataType must be na')
 	})
 })

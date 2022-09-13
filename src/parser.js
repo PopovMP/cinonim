@@ -34,7 +34,8 @@ const TokenType = {
 const NodeType = {
 	assignment : 'assignment',
 	block      : 'block',
-	break      : 'break',
+	branch     : 'branch',
+	branchIf   : 'branchIf',
 	else       : 'else',
 	expression : 'expression',
 	funcBody   : 'funcBody',
@@ -46,7 +47,6 @@ const NodeType = {
 	localVar   : 'localVar',
 	loop       : 'loop',
 	module     : 'module',
-	next       : 'next',
 	number     : 'number',
 	parameter  : 'parameter',
 	return     : 'return',
@@ -137,13 +137,12 @@ function parseModule(node, tokens, index, )
 {
 	if (index === tokens.length) return
 
-	// noinspection PointlessArithmeticExpressionJS
-	const t0 = tokens[index + 0]
-	const t1 = tokens[index + 1]
-	const t2 = tokens[index + 2]
-	const t3 = tokens[index + 3]
-	const t4 = tokens[index + 4]
-	const t5 = tokens[index + 5]
+	const t0 = tokens[index]
+	const t1 = tokens[index+1]
+	const t2 = tokens[index+2]
+	const t3 = tokens[index+3]
+	const t4 = tokens[index+4]
+	const t5 = tokens[index+5]
 
 	// Global variable: int foo = 42;
 	if (isDataType(t0) &&
@@ -154,11 +153,6 @@ function parseModule(node, tokens, index, )
 
 		const globalVar = makeNode(node, NodeType.globalVar, t1.value, dataType)
 		globalVar.tokens = [t0, t1, t2, t3, t4]
-
-		const varNode = makeNode(globalVar, NodeType.variable, t1.value, dataType)
-		varNode.tokens   = [t1]
-
-		globalVar.nodes.push(varNode)
 
 		parseExpression(globalVar, tokens, index + 3)
 
@@ -177,11 +171,6 @@ function parseModule(node, tokens, index, )
 
 		const globalConst = makeNode(node, NodeType.globalConst, t2.value, dataType)
 		globalConst.tokens = [t0, t1, t2, t3, t4, t5]
-
-		const varNode = makeNode(globalConst, NodeType.variable, t2.value, dataType)
-		varNode.tokens = [t2]
-
-		globalConst.nodes.push(varNode)
 
 		parseExpression(globalConst, tokens, index + 4)
 
@@ -250,10 +239,9 @@ function parseModule(node, tokens, index, )
  */
 function parseFuncBody(funcBodyNode, tokens, index)
 {
-	// noinspection PointlessArithmeticExpressionJS
-	const t0 = tokens[index + 0]
-	const t1 = tokens[index + 1]
-	const t2 = tokens[index + 2]
+	const t0 = tokens[index]
+	const t1 = tokens[index+1]
+	const t2 = tokens[index+2]
 
 	// Function body ends with "}"
 	if (t0.type === TokenType.punctuation && t0.value === '}')
@@ -285,9 +273,9 @@ function parseFuncBody(funcBodyNode, tokens, index)
  */
 function parseForm(parentNode, tokens, index)
 {
-	// noinspection PointlessArithmeticExpressionJS
-	const t0 = tokens[index + 0]
-	const t1 = tokens[index + 1]
+	const t0 = tokens[index]
+	const t1 = tokens[index+1]
+	const t2 = tokens[index+2]
 
 	// Form ends with "}"
 	if (t0.type === TokenType.punctuation && t0.value === '}')
@@ -309,31 +297,46 @@ function parseForm(parentNode, tokens, index)
 		throw new Error('Found symbols after function return: ' + tokenCloseBody.value)
 	}
 
-	// break;
-	if (t0.type === TokenType.word && t0.value === 'break' &&
+	// branch;
+	if (t0.type === TokenType.word && t0.value === 'branch' &&
 		t1.type === TokenType.punctuation && t1.value === ';') {
-		const breakNode = makeNode(parentNode, NodeType.break, 'break', DataType.na)
-		breakNode.tokens = [t0, t1]
-		parentNode.nodes.push(breakNode)
+		const branchNode = makeNode(parentNode, NodeType.branch, 0, DataType.na)
+		branchNode.tokens = [t0]
+		parentNode.nodes.push(branchNode)
+
 		return parseForm(parentNode, tokens, index + 2)
 	}
 
-	// next;
-	if (t0.type === TokenType.word && t0.value === 'next' &&
-		t1.type === TokenType.punctuation && t1.value === ';') {
-		const nextNode = makeNode(parentNode, NodeType.next, 'next', DataType.na)
-		nextNode.tokens = [t0, t1]
-		parentNode.nodes.push(nextNode)
-		return parseForm(parentNode, tokens, index + 2)
+	// branch name;
+	if (t0.type === TokenType.word && t0.value === 'branch' &&
+		t1.type === TokenType.word &&
+		t2.type === TokenType.punctuation && t2.value === ';') {
+		const branchNode = makeNode(parentNode, NodeType.branch, t1.value, DataType.na)
+		branchNode.tokens = [t0, t1]
+		parentNode.nodes.push(branchNode)
+
+		return parseForm(parentNode, tokens, index + 3)
 	}
 
 	// loop {
 	if (t0.type === TokenType.word && t0.value === 'loop' &&
 		t1.type === TokenType.punctuation && t1.value === '{') {
-		const loopNode = makeNode(parentNode, NodeType.loop, 'loop', DataType.na)
+		const loopNode = makeNode(parentNode, NodeType.loop, '', DataType.na)
 		loopNode.tokens = [t0, t1]
 		parentNode.nodes.push(loopNode)
 		index = parseForm(loopNode, tokens, index + 2)
+
+		return parseForm(parentNode, tokens, index)
+	}
+
+	// loop name {
+	if (t0.type === TokenType.word && t0.value === 'loop' &&
+		t1.type === TokenType.word &&
+		t2.type === TokenType.punctuation && t2.value === '{') {
+		const loopNode = makeNode(parentNode, NodeType.loop, t1.value, DataType.na)
+		loopNode.tokens = [t0, t1]
+		parentNode.nodes.push(loopNode)
+		index = parseForm(loopNode, tokens, index + 3)
 
 		return parseForm(parentNode, tokens, index)
 	}
@@ -345,6 +348,18 @@ function parseForm(parentNode, tokens, index)
 		blockNode.tokens = [t0, t1]
 		parentNode.nodes.push(blockNode)
 		index = parseForm(blockNode, tokens, index + 2)
+
+		return parseForm(parentNode, tokens, index)
+	}
+
+	// block name {
+	if (t0.type === TokenType.word && t0.value === 'block' &&
+		t1.type === TokenType.word &&
+		t2.type === TokenType.punctuation && t2.value === '{') {
+		const blockNode = makeNode(parentNode, NodeType.block, t1.value, DataType.na)
+		blockNode.tokens = [t0, t1]
+		parentNode.nodes.push(blockNode)
+		index = parseForm(blockNode, tokens, index + 3)
 
 		return parseForm(parentNode, tokens, index)
 	}
@@ -418,8 +433,7 @@ function parseForm(parentNode, tokens, index)
  */
 function parseExpression(parentNode, tokens, index)
 {
-	// noinspection PointlessArithmeticExpressionJS
-	const t0 = tokens[index + 0]
+	const t0 = tokens[index]
 
 	if (t0.type === TokenType.punctuation && [';', ',', ')'].includes(t0.value))
 		return index + 1

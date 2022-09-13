@@ -110,45 +110,47 @@ void foo() {
     (global.set $bar (f64.const 3.14)))
 ```
 
-## Node structure
+## AST structure
 
-```text
+```
 module
-    +-- [*] globalVar
-    |           +-- [1] variable
+    +-- [*] globalVar {val: varName, dataType: varDataType}
     |           \-- [1] number
     |
-    +-- [*] globalConst
-    |           +-- [1] variable
+    +-- [*] globalConst {val: varName, dataType: varDataType}
     |           +-- [1] number
     |
-    \-- [*] function
+    \-- [*] function {value: funcName, dataType: funcDataType}
                 +-- [1] funcParams
                 |           \-- [*] parameter
                 |
                 \-- [1] funcBody
-                            +-- [*] localVar
+                            +-- [*] localVar {val: varName, dataType: varDataType}
                             +-- [*] FORM 
-                            \-- [!] return
-                                      \-- [1] expression
- 
-FORM => assignment | loop | block | if | funcCall
 
-assignment
-    +-- [1] localVar | parameter | globalVar
+FORM =
+    | assignment
+    | block
+    | branch
+    | branchIf
+    | funcCall
+    | if
+    | loop
+    | return
+
+assignment {value: varName, dataType: varDataType}
     \-- [1] expression
 
-loop
-    +-- [*] next
-    +-- [*] nextIf
-    |           \-- [1] expression
+block {value: ?label}
     \-- [*] FORM
 
-block
-    +-- [*] break
-    +-- [*] breakIf
-    |           \-- [1] expression
-    \-- [*] FORM
+branch {value: ?label|index}
+
+branchIf {value: ?label|index}
+    +-- [1] expression
+
+funcCall {value: funcName, dataType: funcDataType}
+    \-- [*] expression
 
 if
     +-- [1] expression
@@ -156,6 +158,12 @@ if
     |           \-- [*] FORM
     \-- [!] else
                 \-- [*] FORM
+
+loop {value: ?label}
+    \-- [*] FORM
+
+return {value: funcName, dataType: funcDataType}
+    \-- [1] expression
 
 expression
     +-- [!] number

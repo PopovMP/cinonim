@@ -29,10 +29,10 @@ describe('global', () => {
 		strictEqual(globalVar.type, NodeType.globalVar)
 		strictEqual(globalVar.dataType, DataType.i32)
 
-		const [varNode, numNode] = globalVar.nodes
+		const [numNode] = globalVar.nodes
 
-		strictEqual(varNode.value, 'foo')
-		strictEqual(varNode.dataType, DataType.i32)
+		strictEqual(globalVar.value,    'foo')
+		strictEqual(globalVar.dataType, DataType.i32)
 		strictEqual(numNode.value, 42)
 		strictEqual(numNode.dataType, DataType.i32)
 	})
@@ -43,28 +43,26 @@ describe('global', () => {
 		strictEqual(globalVar.type, NodeType.globalVar)
 		strictEqual(globalVar.dataType, DataType.i64)
 
-		const [varNode, numNode] = globalVar.nodes
+		const [numNode] = globalVar.nodes
 
-		strictEqual(varNode.value, 'foo')
-		strictEqual(varNode.dataType, DataType.i64)
+		strictEqual(globalVar.value, 'foo')
+		strictEqual(globalVar.dataType, DataType.i64)
 		strictEqual(numNode.value, 42)
 		strictEqual(numNode.dataType, DataType.i64)
 	})
 
 	it('float foo = 3.14;', () => {
 		const src = `float foo = 3.14;`
-		const [varNode, numNode] = parseModule(src)[0].nodes
+		const [numNode] = parseModule(src)[0].nodes
 
-		strictEqual(varNode.dataType, DataType.f32)
 		strictEqual(numNode.value, 3.14)
 		strictEqual(numNode.dataType, DataType.f32)
 	})
 
 	it('double foo = 3.14;', () => {
 		const src = `double foo = 3.14;`
-		const [varNode, numNode] = parseModule(src)[0].nodes
+		const [numNode] = parseModule(src)[0].nodes
 
-		strictEqual(varNode.dataType, DataType.f64)
 		strictEqual(numNode.value, 3.14)
 		strictEqual(numNode.dataType, DataType.f64)
 	})
@@ -75,9 +73,9 @@ describe('global', () => {
 		strictEqual(globalVar.type, NodeType.globalConst)
 		strictEqual(globalVar.dataType, DataType.f64)
 
-		const [varNode, numNode] = globalVar.nodes
+		const [numNode] = globalVar.nodes
 
-		strictEqual(varNode.dataType, DataType.f64)
+		strictEqual(globalVar.dataType, DataType.f64)
 		strictEqual(numNode.value, 3.14)
 		strictEqual(numNode.dataType, DataType.f64)
 	})

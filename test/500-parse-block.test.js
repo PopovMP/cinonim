@@ -28,19 +28,19 @@ describe('block', () => {
 			int foo() {
 				int bar;
 
-				block {
-				loop  {
+				block my_block {
+				loop  my_loop {
 					bar = 0;
 					if (bar) {
-						next;
+						branch;
 					}
 					else {
 						bar = 1;
-						next;
+						branch my_loop;
 					}
 					if (bar) {
 						bar = 1;
-					    break;
+					    branch my_block;
 				    }
 				}}
 
@@ -52,7 +52,7 @@ describe('block', () => {
 
 		strictEqual(typeof blockNode,   'object',       'blockNode must be an object')
 		strictEqual(blockNode.type,     NodeType.block, 'blockNode.type must be NodeType.block')
-		strictEqual(blockNode.value,    'block',        'blockNode.value must be "block"')
+		strictEqual(blockNode.value,    'my_block',     'blockNode.value must be "my_block"')
 		strictEqual(blockNode.dataType, DataType.na,    'blockNode.dataType must be na')
 	})
 })
