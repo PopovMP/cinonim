@@ -137,7 +137,7 @@ function parseModule(node, tokens, index, )
 {
 	if (index === tokens.length) return
 
-	const t0 = tokens[index]
+	const t0 = tokens[index];
 	const t1 = tokens[index+1]
 	const t2 = tokens[index+2]
 	const t3 = tokens[index+3]
@@ -307,9 +307,9 @@ function parseForm(parentNode, tokens, index)
 		return parseForm(parentNode, tokens, index + 2)
 	}
 
-	// branch name;
+	// branch name|index;
 	if (t0.type === TokenType.word && t0.value === 'branch' &&
-		t1.type === TokenType.word &&
+		(t1.type === TokenType.word || t1.type === TokenType.number) &&
 		t2.type === TokenType.punctuation && t2.value === ';') {
 		const branchNode = makeNode(parentNode, NodeType.branch, t1.value, DataType.na)
 		branchNode.tokens = [t0, t1]

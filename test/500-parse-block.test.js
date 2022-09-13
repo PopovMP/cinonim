@@ -36,7 +36,7 @@ describe('block', () => {
 					}
 					else {
 						bar = 1;
-						branch my_loop;
+						branch 0;
 					}
 					if (bar) {
 						bar = 1;
