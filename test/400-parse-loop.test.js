@@ -41,7 +41,7 @@ describe('loop', () => {
 
 		strictEqual(typeof loopNode,     'object',      'loopNode must be an object')
 		strictEqual(loopNode.type,       NodeType.loop, 'loopNode.type must be NodeType.loop')
-		strictEqual(loopNode.value,      '',            'loopNode.value must be ""')
+		strictEqual(loopNode.value,      'loop',        'loopNode.value must be "loop"')
 		strictEqual(loopNode.dataType,   DataType.na,   'loopNode.dataType must be na')
 	})
 
@@ -62,7 +62,7 @@ describe('loop', () => {
 
 		strictEqual(typeof loopNode,     'object',      'loopNode must be an object')
 		strictEqual(loopNode.type,       NodeType.loop, 'loopNode.type must be NodeType.loop')
-		strictEqual(loopNode.value,      '',            'loopNode.value must be ""')
+		strictEqual(loopNode.value,      'loop',        'loopNode.value must be "loop"')
 		strictEqual(loopNode.dataType,   DataType.na,   'loopNode.dataType must be na')
 	})
 

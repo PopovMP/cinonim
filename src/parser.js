@@ -321,7 +321,7 @@ function parseForm(parentNode, tokens, index)
 	// loop {
 	if (t0.type === TokenType.word && t0.value === 'loop' &&
 		t1.type === TokenType.punctuation && t1.value === '{') {
-		const loopNode = makeNode(parentNode, NodeType.loop, '', DataType.na)
+		const loopNode = makeNode(parentNode, NodeType.loop, 'loop', DataType.na)
 		loopNode.tokens = [t0, t1]
 		parentNode.nodes.push(loopNode)
 		index = parseForm(loopNode, tokens, index + 2)
