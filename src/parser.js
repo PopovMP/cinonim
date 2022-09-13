@@ -12,7 +12,7 @@
  *
  * @property {string}    type
  * @property {*}         value    - value
- * @property {string}    dataType - na, i32, i64, f32, f64, string, char, void
+ * @property {string}    dataType - na, i32, i64, f32, f64, void
  * @property {Node[]}    nodes    - list of underlying nodes
  * @property {Token[]}   tokens
  * @property {Node|null} parent
@@ -61,23 +61,18 @@ const DataType = {
 	i64   : 'i64',
 	f32   : 'f32',
 	f64   : 'f64',
-	string: 'string',
-	char  : 'char',
 	void  : 'void',
 	number: 'number'
 }
 
 /** @type {string[]} */
-const dataTypes = ['int', 'long', 'float', 'double', 'string', 'character', 'char', 'void']
+const dataTypes = ['int', 'long', 'float', 'double', 'void']
 
 const dataTypeMap = {
 	int      : DataType.i32,
 	long     : DataType.i64,
 	float    : DataType.f32,
 	double   : DataType.f64,
-	string   : DataType.string,
-	char     : DataType.char,
-	character: DataType.char,
 	void     : DataType.void,
 }
 
@@ -328,7 +323,7 @@ function parseForm(parentNode, tokens, index)
 		branchIfNode.tokens = [t0, t1]
 		parentNode.nodes.push(branchIfNode)
 
-		const predicate = makeNode(branchIfNode, NodeType.predicate, '', DataType.number)
+		const predicate = makeNode(branchIfNode, NodeType.predicate, '', DataType.i32)
 		branchIfNode.nodes.push(predicate)
 
 		index = parseExpression(predicate, tokens, index + 3)
@@ -345,7 +340,7 @@ function parseForm(parentNode, tokens, index)
 		branchIfNode.tokens = [t0, t1, t2]
 		parentNode.nodes.push(branchIfNode)
 
-		const predicate = makeNode(branchIfNode, NodeType.predicate, '', DataType.number)
+		const predicate = makeNode(branchIfNode, NodeType.predicate, '', DataType.i32)
 		branchIfNode.nodes.push(predicate)
 
 		index = parseExpression(predicate, tokens, index + 4)
@@ -431,7 +426,7 @@ function parseForm(parentNode, tokens, index)
 		ifNode.tokens = [t0, t1]
 		parentNode.nodes.push(ifNode)
 
-		const predicate = makeNode(ifNode, NodeType.predicate, '', DataType.number)
+		const predicate = makeNode(ifNode, NodeType.predicate, '', DataType.i32)
 		predicate.tokens.push(t2)
 		ifNode.nodes.push(predicate)
 
@@ -482,7 +477,7 @@ function parseExpression(parentNode, tokens, index)
 	}
 
 	// Number
-	// 42
+	// 42 | 3.14
 	if (t0.type === TokenType.number) {
 		const value = parentNode.dataType === DataType.i32 || parentNode.dataType === DataType.i64
 			? parseInt(t0.value)

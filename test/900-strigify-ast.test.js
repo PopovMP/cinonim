@@ -44,7 +44,7 @@ const expected = '' +
                         localVar bar: i32
                         number 0: i32
                     if
-                        predicate: number
+                        predicate: i32
                             localVar bar: i32
                         then
                             assignment glob: f64
@@ -58,7 +58,7 @@ const expected = '' +
                                 number 1: i32
                             branch 0
                     if
-                        predicate: number
+                        predicate: i32
                             localVar bar: i32
                         then
                             assignment bar: i32
@@ -66,10 +66,10 @@ const expected = '' +
                                 number 1: i32
                             branch my_block
                     branchIf 0
-                        predicate: number
-                            number 42: number
+                        predicate: i32
+                            number 42: i32
                     branchIf my_loop
-                        predicate: number
+                        predicate: i32
                             localVar bar: i32
             return foo: i32
                 localVar bar: i32`

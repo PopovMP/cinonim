@@ -3,12 +3,11 @@
 **Peperoni** aims to be directly transpiled to WAT.
 
 ## Data types
-  * **int** -> **i32**
-  * **long** -> **i64**
-  * **float** -> **f32**
+  * **int**    -> **i32**
+  * **long**   -> **i64**
+  * **float**  -> **f32**
   * **double** -> **f64**
-  * **char** -> **u8**
-  * **void** -> used as a function return type
+  * **void**   -> used as a function return type
 
 ## Line comment
 
