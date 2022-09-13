@@ -49,6 +49,7 @@ const NodeType = {
 	module     : 'module',
 	number     : 'number',
 	parameter  : 'parameter',
+	predicate  : 'predicate',
 	return     : 'return',
 	then       : 'then',
 	variable   : 'variable',
@@ -327,7 +328,7 @@ function parseForm(parentNode, tokens, index)
 		branchIfNode.tokens = [t0, t1]
 		parentNode.nodes.push(branchIfNode)
 
-		const predicate = makeNode(branchIfNode, NodeType.expression, 'predicate', DataType.number)
+		const predicate = makeNode(branchIfNode, NodeType.predicate, '', DataType.number)
 		branchIfNode.nodes.push(predicate)
 
 		index = parseExpression(predicate, tokens, index + 3)
@@ -344,7 +345,7 @@ function parseForm(parentNode, tokens, index)
 		branchIfNode.tokens = [t0, t1, t2]
 		parentNode.nodes.push(branchIfNode)
 
-		const predicate = makeNode(branchIfNode, NodeType.expression, 'predicate', DataType.number)
+		const predicate = makeNode(branchIfNode, NodeType.predicate, '', DataType.number)
 		branchIfNode.nodes.push(predicate)
 
 		index = parseExpression(predicate, tokens, index + 4)
@@ -355,7 +356,7 @@ function parseForm(parentNode, tokens, index)
 	// loop {
 	if (t0.type === TokenType.word && t0.value === 'loop' &&
 		t1.type === TokenType.punctuation && t1.value === '{') {
-		const loopNode = makeNode(parentNode, NodeType.loop, 'loop', DataType.na)
+		const loopNode = makeNode(parentNode, NodeType.loop, '', DataType.na)
 		loopNode.tokens = [t0, t1]
 		parentNode.nodes.push(loopNode)
 		index = parseForm(loopNode, tokens, index + 2)
@@ -378,7 +379,7 @@ function parseForm(parentNode, tokens, index)
 	// block {
 	if (t0.type === TokenType.word && t0.value === 'block' &&
 		t1.type === TokenType.punctuation && t1.value === '{') {
-		const blockNode = makeNode(parentNode, NodeType.block, 'block', DataType.na)
+		const blockNode = makeNode(parentNode, NodeType.block, '', DataType.na)
 		blockNode.tokens = [t0, t1]
 		parentNode.nodes.push(blockNode)
 		index = parseForm(blockNode, tokens, index + 2)
@@ -426,23 +427,24 @@ function parseForm(parentNode, tokens, index)
 	if (t0.type === TokenType.word && t0.value === 'if' &&
 		t1.type === TokenType.punctuation && t1.value === '(') {
 
-		const ifNode = makeNode(parentNode, NodeType.if, 'if', DataType.na)
+		const ifNode = makeNode(parentNode, NodeType.if, '', DataType.na)
 		ifNode.tokens = [t0, t1]
 		parentNode.nodes.push(ifNode)
 
-		const predicate = makeNode(ifNode, NodeType.expression, 'predicate', DataType.number)
+		const predicate = makeNode(ifNode, NodeType.predicate, '', DataType.number)
+		predicate.tokens.push(t2)
 		ifNode.nodes.push(predicate)
 
-		index = parseExpression(predicate, tokens, index + 3)
+		index = parseExpression(predicate, tokens, index + 2)
 
-		const then = makeNode(ifNode, NodeType.then, 'then', DataType.na)
+		const then = makeNode(ifNode, NodeType.then, '', DataType.na)
 		then.tokens.push(tokens[index])
 		ifNode.nodes.push(then)
 
 		index = parseForm(then, tokens, index + 1)
 
 		if (tokens[index].type === TokenType.word && tokens[index].value === 'else') {
-			const elseNode = makeNode(ifNode, NodeType.else, 'else', DataType.na)
+			const elseNode = makeNode(ifNode, NodeType.else, '', DataType.na)
 			elseNode.tokens.push(tokens[index])
 			ifNode.nodes.push(elseNode)
 
@@ -474,7 +476,7 @@ function parseExpression(parentNode, tokens, index)
 
 	// Open parenthesis
 	if (t0.type === TokenType.punctuation && t0.value === '(') {
-		const expressionNode = makeNode(parentNode, NodeType.expression, 'parenthesis', parentNode.dataType)
+		const expressionNode = makeNode(parentNode, NodeType.expression, 'parens', parentNode.dataType)
 		expressionNode.tokens.push(t0)
 		return parseExpression(expressionNode, tokens, index + 1)
 	}
@@ -544,8 +546,43 @@ function lookupVar(parentNode, varName)
 	return lookupVar(parentNode.parent, varName)
 }
 
+/**
+ * Stringifies AST
+ *
+ * @param {Node} node
+ *
+ * @return {string}
+ */
+function stringifyAst(node)
+{
+	const output = []
+	loopAst(node, 0, output)
+
+	return output.join('\n')
+
+	/**
+	 * @param {Node}     node
+	 * @param {number}   level
+	 * @param {string[]} output
+	 */
+	function loopAst(node, level, output)
+	{
+		const leftPad      = '    '.repeat(level)
+		const dataTypeText = node.dataType !== DataType.na ? ': ' + node.dataType : ''
+		const valueText    = node.value === '' ? '' : ' ' + String(node.value)
+		const nodeText     = `${leftPad}${node.type}${valueText}${dataTypeText}`
+
+		output.push(nodeText)
+
+		for (const nd of node.nodes) {
+			loopAst(nd, level + 1, output)
+		}
+	}
+}
+
 module.exports = {
 	parse,
+	stringifyAst,
 	NodeType,
 	DataType,
 }
