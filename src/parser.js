@@ -76,6 +76,23 @@ const dataTypeMap = {
 	void     : DataType.void,
 }
 
+const operatorPrecedence = {
+	'('   : 18, ')': 18,
+	'['   : 17, ']': 17, 'funcCall': 17,
+	'..++': 15, '..--': 15, // Postfix increment, decrement
+	'++..': 14, '--..': 14, // Prefix  increment, decrement
+	'-..' : 14,             // Negate
+	'**'  : 13, '^' : 13,   // Power
+	'*'   : 12, '/' : 12, '%': 12,
+	'+'   : 11, '-' : 11,
+	'<'   : 9,  '<=': 9,  '>': 9, '>=': 9,
+	'=='  : 8, '!=' : 8,
+	'&&'  : 4,
+	'||'  : 3,
+	'?:'  : 2, // Ternary operator
+	','   : 1, // Comma sequence
+}
+
 /**
  * Makes a new node
  *
