@@ -109,6 +109,42 @@ void foo() {
     (global.set $bar (f64.const 3.14)))
 ```
 
+## Grammar
+
+```ebnf
+module           = {global-variable | global-constant | function-def};
+global-variable  = numeric-type, alphanum, "=", numeric, ";";
+global-constant  = "const", numeric-type, alphanum, "=", numeric, ";";
+function-def     = data-type, alphanum, "(", (parameter, {",", parameter})?, ")", "{", function-body, "}";
+data-type        = "void" | numeric-type ;
+numeric-type     = "int"  | "long" | "float" | "double" ;
+alphanum         = [a-z A-Z]+ [a-z A-Z 0-9]* ;
+numeric          = "-"? [0-9]+ ("." [0-9]+)? ;
+parameter        = numeric-type, alphanum;
+function-body    = local-variable*, statement*, return? ;
+local-variable   = numeric-type, alphanum, ";" ;
+return           = "return", expression?, ";" ;
+statement        = assignment | block  | loop | if | function-call, ";" | statement ;
+assignment       = alphanum, "=", expression, ";" ;
+function-call    = alphanum, "(", (expression, (",", expression)* )?, ")" ;
+block            = "block", alphanum?, "{", block-body?, "}" ;
+loop             = "loop" , alphanum?, "{", block-body?, "}" ;
+block-body       = (statement | branch | branch-if)* ;
+branch           = "br", (alphanum | numeric)?, ";" ;
+branch-if        = "br", (alphanum | numeric)?, "if", "(", expression, ")", ";" ;
+if               = "if", "(", expression, ")", "{", statement*, "}", ("{", "else", statement* "}")? ;
+expression       = grouping | numeric | variable-lookup | function-call | unary-operation |
+                   binary-operation | expression;
+grouping         = "(", expression, ")" ;
+variable-lookup  = alphanum	;
+binary-operation = expression, binary-operator, expression;
+unary-operation  = unary-operator, (numeric | variable-lookup | function-call | grouping) ;
+unary-operator   = "-" | "!";
+binary-operator  =  "+"  | "-" | "*" | "/" | "%" | "||" | "&&" | "==" | "" | "" | "=" | "=" | "!=" ;
+keyword          = "block" | "br" | "const" | "double" | "else" | "float" | "if" | "int" | "long" |
+                   "loop" | "return" | "void";
+```
+
 ## AST structure
 
 ```
