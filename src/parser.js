@@ -107,7 +107,12 @@ const operatorPrecedence = {
  */
 function makeNode(parent, type, value, dataType, tokens = [])
 {
-	return {parent, type, value, dataType, nodes: [], tokens}
+	const node = {parent, type, value, dataType, tokens, nodes: []}
+
+	if (parent !== null)
+		parent.nodes.push(node)
+
+	return node
 }
 
 /**
@@ -164,11 +169,8 @@ function parseModule(moduleNode, tokens, index, )
 		t1.type === TokenType.word &&
 		t2.type === TokenType.operator && t2.value === '=') {
 
-		const dataType  = dataTypeMap[t0.value]
-		const globalVar = makeNode(moduleNode, NodeType.globalVar, t1.value, dataType, [t0, t1, t2, t3, t4])
-
+		const globalVar = makeNode(moduleNode, NodeType.globalVar, t1.value, dataTypeMap[t0.value], [t0, t1])
 		parseExpression(globalVar, tokens, index+3)
-		moduleNode.nodes.push(globalVar)
 
 		return parseModule(moduleNode, tokens, index+5)
 	}
@@ -179,11 +181,8 @@ function parseModule(moduleNode, tokens, index, )
 		t2.type === TokenType.word &&
 		t3.type === TokenType.operator && t3.value === '=') {
 
-		const dataType    = dataTypeMap[t1.value]
-		const globalConst = makeNode(moduleNode, NodeType.globalConst, t2.value, dataType, [t0, t1, t2, t3, t4, t5])
-
+		const globalConst = makeNode(moduleNode, NodeType.globalConst, t2.value, dataTypeMap[t1.value], [t0, t1, t2])
 		parseExpression(globalConst, tokens, index+4)
-		moduleNode.nodes.push(globalConst)
 
 		return parseModule(moduleNode, tokens, index+6)
 	}
@@ -199,9 +198,6 @@ function parseModule(moduleNode, tokens, index, )
 		const funcNode   = makeNode(moduleNode, NodeType.function, funcName, dataType)
 		const funcParams = makeNode(funcNode, NodeType.funcParams, funcName, DataType.na)
 		const funcBody   = makeNode(funcNode, NodeType.funcBody, funcName, dataType)
-
-		funcNode.nodes = [funcParams, funcBody]
-		moduleNode.nodes.push(funcNode)
 
 		index = parseFuncParams(funcParams, tokens, index+3)
 		index = parseFuncBody(funcBody, tokens, index+1)
@@ -230,8 +226,7 @@ function parseFuncParams(funcParams, tokens, index)
 		if (t0.type === TokenType.punctuation && t0.value === ',') continue
 		index += 1 // Eats param name
 
-		const param = makeNode(funcParams, NodeType.parameter, t1.value, dataTypeMap[t0.value], [t0, t1])
-		funcParams.nodes.push(param)
+		makeNode(funcParams, NodeType.parameter, t1.value, dataTypeMap[t0.value], [t0, t1])
 	}
 
 	// eats last ")"
@@ -262,8 +257,7 @@ function parseFuncBody(funcBody, tokens, index)
 	if (isDataType(t0) &&
 		t1.type === TokenType.word &&
 		t2.type === TokenType.punctuation && t2.value === ';') {
-		const varNode = makeNode(funcBody, NodeType.localVar, t1.value, dataTypeMap[t0.value], [t0, t1, t2])
-		funcBody.nodes.push(varNode)
+		makeNode(funcBody, NodeType.localVar, t1.value, dataTypeMap[t0.value], [t0, t1, t2])
 
 		return parseFuncBody(funcBody, tokens, index+3)
 	}
@@ -295,7 +289,6 @@ function parseForm(parentNode, tokens, index)
 	// return expression;
 	if (t0.type === TokenType.word && t0.value === 'return') {
 		const returnNode = makeNode(parentNode, NodeType.return, parentNode.value, parentNode.dataType, [t0])
-		parentNode.nodes.push(returnNode)
 
 		index = parseExpression(returnNode, tokens, index+1)
 
@@ -309,8 +302,7 @@ function parseForm(parentNode, tokens, index)
 	// branch;
 	if (t0.type === TokenType.word && t0.value === 'branch' &&
 		t1.type === TokenType.punctuation && t1.value === ';') {
-		const branchNode = makeNode(parentNode, NodeType.branch, 0, DataType.na, [t0])
-		parentNode.nodes.push(branchNode)
+		makeNode(parentNode, NodeType.branch, 0, DataType.na, [t0])
 
 		return parseForm(parentNode, tokens, index+2)
 	}
@@ -319,8 +311,7 @@ function parseForm(parentNode, tokens, index)
 	if (t0.type === TokenType.word && t0.value === 'branch' &&
 		(t1.type === TokenType.word || t1.type === TokenType.number) &&
 		t2.type === TokenType.punctuation && t2.value === ';') {
-		const branchNode = makeNode(parentNode, NodeType.branch, t1.value, DataType.na, [t0, t1])
-		parentNode.nodes.push(branchNode)
+		makeNode(parentNode, NodeType.branch, t1.value, DataType.na, [t0, t1])
 
 		return parseForm(parentNode, tokens, index+3)
 	}
@@ -329,13 +320,9 @@ function parseForm(parentNode, tokens, index)
 	if (t0.type === TokenType.word && t0.value === 'branch' &&
 		t1.type === TokenType.word && t1.value === 'if'     &&
 		t2.type === TokenType.punctuation && t2.value === '(') {
-		const branchIfNode = makeNode(parentNode, NodeType.branchIf, 0, DataType.na, [t0, t1])
-		parentNode.nodes.push(branchIfNode)
-
-		const predicate = makeNode(branchIfNode, NodeType.predicate, '', DataType.i32)
-		branchIfNode.nodes.push(predicate)
-
-		index = parseExpression(predicate, tokens, index+3)
+		const branchIfNode  = makeNode(parentNode, NodeType.branchIf, 0, DataType.na, [t0, t1])
+		const predicateNode = makeNode(branchIfNode, NodeType.predicate, '', DataType.i32)
+		index = parseExpression(predicateNode, tokens, index+3)
 
 		return parseForm(parentNode, tokens, index+1)
 	}
@@ -345,23 +332,18 @@ function parseForm(parentNode, tokens, index)
 		(t1.type === TokenType.word || t1.type === TokenType.number) &&
 		t2.type === TokenType.word && t2.value === 'if'     &&
 		t3.type === TokenType.punctuation && t3.value === '(') {
-		const branchIfNode = makeNode(parentNode, NodeType.branchIf, t1.value, DataType.na, [t0, t1, t2])
-		parentNode.nodes.push(branchIfNode)
+		const branchIfNode  = makeNode(parentNode, NodeType.branchIf, t1.value, DataType.na, [t0, t1, t2])
+		const predicateNode = makeNode(branchIfNode, NodeType.predicate, '', DataType.i32)
+		index = parseExpression(predicateNode, tokens, index+4)
 
-		const predicate = makeNode(branchIfNode, NodeType.predicate, '', DataType.i32)
-		branchIfNode.nodes.push(predicate)
-
-		index = parseExpression(predicate, tokens, index + 4)
-
-		return parseForm(parentNode, tokens, index + 1)
+		return parseForm(parentNode, tokens, index+1)
 	}
 
 	// loop {
 	if (t0.type === TokenType.word && t0.value === 'loop' &&
 		t1.type === TokenType.punctuation && t1.value === '{') {
 		const loopNode = makeNode(parentNode, NodeType.loop, '', DataType.na, [t0, t1])
-		parentNode.nodes.push(loopNode)
-		index = parseForm(loopNode, tokens, index + 2)
+		index = parseForm(loopNode, tokens, index+2)
 
 		return parseForm(parentNode, tokens, index)
 	}
@@ -371,8 +353,7 @@ function parseForm(parentNode, tokens, index)
 		t1.type === TokenType.word &&
 		t2.type === TokenType.punctuation && t2.value === '{') {
 		const loopNode = makeNode(parentNode, NodeType.loop, t1.value, DataType.na, [t0, t1])
-		parentNode.nodes.push(loopNode)
-		index = parseForm(loopNode, tokens, index + 3)
+		index = parseForm(loopNode, tokens, index+3)
 
 		return parseForm(parentNode, tokens, index)
 	}
@@ -381,8 +362,7 @@ function parseForm(parentNode, tokens, index)
 	if (t0.type === TokenType.word && t0.value === 'block' &&
 		t1.type === TokenType.punctuation && t1.value === '{') {
 		const blockNode = makeNode(parentNode, NodeType.block, '', DataType.na, [t0, t1])
-		parentNode.nodes.push(blockNode)
-		index = parseForm(blockNode, tokens, index + 2)
+		index = parseForm(blockNode, tokens, index+2)
 
 		return parseForm(parentNode, tokens, index)
 	}
@@ -392,8 +372,7 @@ function parseForm(parentNode, tokens, index)
 		t1.type === TokenType.word &&
 		t2.type === TokenType.punctuation && t2.value === '{') {
 		const blockNode = makeNode(parentNode, NodeType.block, t1.value, DataType.na, [t0, t1])
-		parentNode.nodes.push(blockNode)
-		index = parseForm(blockNode, tokens, index + 3)
+		index = parseForm(blockNode, tokens, index+3)
 
 		return parseForm(parentNode, tokens, index)
 	}
@@ -411,11 +390,8 @@ function parseForm(parentNode, tokens, index)
 			throw new Error('Cannot assign value to a constant: ' + varName)
 
 		const assignmentNode = makeNode(parentNode, NodeType.assignment, varNode.value, varNode.dataType, [t0, t1])
-		assignmentNode.nodes = [varNode]
-
-		parentNode.nodes.push(assignmentNode)
-
-		index = parseExpression(assignmentNode, tokens, index + 2)
+		assignmentNode.nodes.push(varNode)
+		index = parseExpression(assignmentNode, tokens, index+2)
 
 		return parseForm(parentNode, tokens, index)
 	}
@@ -426,23 +402,16 @@ function parseForm(parentNode, tokens, index)
 		t1.type === TokenType.punctuation && t1.value === '(') {
 
 		const ifNode = makeNode(parentNode, NodeType.if, '', DataType.na, [t0, t1])
-		parentNode.nodes.push(ifNode)
 
 		const predicate = makeNode(ifNode, NodeType.predicate, '', DataType.i32, [t2])
-		ifNode.nodes.push(predicate)
-
-		index = parseExpression(predicate, tokens, index + 2)
+		index = parseExpression(predicate, tokens, index+2)
 
 		const then = makeNode(ifNode, NodeType.then, '', DataType.na, [tokens[index]])
-		ifNode.nodes.push(then)
-
-		index = parseForm(then, tokens, index + 1)
+		index = parseForm(then, tokens, index+1)
 
 		if (tokens[index].type === TokenType.word && tokens[index].value === 'else') {
 			const elseNode = makeNode(ifNode, NodeType.else, '', DataType.na, [tokens[index]])
-			ifNode.nodes.push(elseNode)
-
-			index = parseForm(elseNode, tokens, index + 2)
+			index = parseForm(elseNode, tokens, index+2)
 		}
 
 		return parseForm(parentNode, tokens, index)
@@ -471,7 +440,7 @@ function parseExpression(parentNode, tokens, index)
 	// Open parenthesis
 	if (t0.type === TokenType.punctuation && t0.value === '(') {
 		const expressionNode = makeNode(parentNode, NodeType.expression, '', parentNode.dataType, [t0])
-		return parseExpression(expressionNode, tokens, index + 1)
+		return parseExpression(expressionNode, tokens, index+1)
 	}
 
 	// Number
@@ -481,10 +450,9 @@ function parseExpression(parentNode, tokens, index)
 			? parseInt(t0.value)
 			: parseFloat(t0.value)
 
-		const numberNode = makeNode(parentNode, NodeType.number, value, parentNode.dataType, [t0])
-		parentNode.nodes.push(numberNode)
+		makeNode(parentNode, NodeType.number, value, parentNode.dataType, [t0])
 
-		return parseExpression(parentNode, tokens, index + 1)
+		return parseExpression(parentNode, tokens, index+1)
 	}
 
 	// Variable lookup
@@ -495,7 +463,7 @@ function parseExpression(parentNode, tokens, index)
 			throw new Error('Cannot find a variable: ' + t0.value)
 		parentNode.nodes.push(variableNode)
 
-		return parseExpression(parentNode, tokens, index + 1)
+		return parseExpression(parentNode, tokens, index+1)
 	}
 
 	throw new Error('Unreachable parseExpression')
@@ -567,7 +535,7 @@ function stringifyAst(node)
 		output.push(nodeText)
 
 		for (const nd of node.nodes) {
-			loopAst(nd, level + 1, output)
+			loopAst(nd, level+1, output)
 		}
 	}
 }
