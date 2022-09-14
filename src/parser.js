@@ -76,6 +76,7 @@ const dataTypeMap = {
 	void     : DataType.void,
 }
 
+// noinspection JSUnusedLocalSymbols
 const operatorPrecedence = {
 	'('   : 18, ')': 18,
 	'['   : 17, ']': 17, 'funcCall': 17,
@@ -130,24 +131,24 @@ function isDataType(token)
  */
 function parse(tokens)
 {
-	const wasmModule = makeNode(null, NodeType.module, 'module', DataType.na)
+	const moduleNode = makeNode(null, NodeType.module, 'module', DataType.na)
 
 	const index = 0
-	parseModule(wasmModule, tokens, index)
+	parseModule(moduleNode, tokens, index)
 
-	return wasmModule
+	return moduleNode
 }
 
 /**
  * Parses a token in a module's global state
  *
- * @param {Node}    node
+ * @param {Node}    moduleNode
  * @param {Token[]} tokens
  * @param {number}  index - current token index
  *
  * @return {void}
  */
-function parseModule(node, tokens, index, )
+function parseModule(moduleNode, tokens, index, )
 {
 	if (index === tokens.length) return
 
@@ -164,13 +165,12 @@ function parseModule(node, tokens, index, )
 		t2.type === TokenType.operator && t2.value === '=') {
 
 		const dataType  = dataTypeMap[t0.value]
-		const globalVar = makeNode(node, NodeType.globalVar, t1.value, dataType, [t0, t1, t2, t3, t4])
+		const globalVar = makeNode(moduleNode, NodeType.globalVar, t1.value, dataType, [t0, t1, t2, t3, t4])
 
-		parseExpression(globalVar, tokens, index + 3)
+		parseExpression(globalVar, tokens, index+3)
+		moduleNode.nodes.push(globalVar)
 
-		node.nodes.push(globalVar)
-		parseModule(node, tokens, index + 5)
-		return
+		return parseModule(moduleNode, tokens, index+5)
 	}
 
 	// Global const: const int foo = 42;
@@ -180,13 +180,12 @@ function parseModule(node, tokens, index, )
 		t3.type === TokenType.operator && t3.value === '=') {
 
 		const dataType    = dataTypeMap[t1.value]
-		const globalConst = makeNode(node, NodeType.globalConst, t2.value, dataType, [t0, t1, t2, t3, t4, t5])
+		const globalConst = makeNode(moduleNode, NodeType.globalConst, t2.value, dataType, [t0, t1, t2, t3, t4, t5])
 
-		parseExpression(globalConst, tokens, index + 4)
+		parseExpression(globalConst, tokens, index+4)
+		moduleNode.nodes.push(globalConst)
 
-		node.nodes.push(globalConst)
-		parseModule(node, tokens, index + 6)
-		return
+		return parseModule(moduleNode, tokens, index+6)
 	}
 
 	// Function declaration: int foo(int bar, int baz) { }
@@ -197,55 +196,58 @@ function parseModule(node, tokens, index, )
 		const dataType = dataTypeMap[t0.value]
 		const funcName = t1.value
 
-		const functionNode = makeNode(node, NodeType.function, funcName, dataType)
+		const funcNode   = makeNode(moduleNode, NodeType.function, funcName, dataType)
+		const funcParams = makeNode(funcNode, NodeType.funcParams, funcName, DataType.na)
+		const funcBody   = makeNode(funcNode, NodeType.funcBody, funcName, dataType)
 
-		// Function parameters
-		const funcParams = makeNode(functionNode, NodeType.funcParams, funcName, DataType.na)
-		index += 3
-		for (;;index++) {
-			const tkn = tokens[index]
-			if (tkn.type === TokenType.punctuation && tkn.value === ')')
-				break
-			if (tkn.type === TokenType.punctuation && tkn.value === ',')
-				continue
+		funcNode.nodes = [funcParams, funcBody]
+		moduleNode.nodes.push(funcNode)
 
-			const tknDataType  = tkn
-			const tknParamName = tokens[++index]
-			const dataType  = dataTypeMap[tknDataType.value]
-			const paramName = tknParamName.value
+		index = parseFuncParams(funcParams, tokens, index+3)
+		index = parseFuncBody(funcBody, tokens, index+1)
 
-			const param = makeNode(funcParams, NodeType.parameter, paramName, dataType, [tknDataType, tknParamName])
-
-			funcParams.nodes.push(param)
-		}
-
-		// Function body
-		const funcBody = makeNode(functionNode, NodeType.funcBody, funcName, dataType, [tokens[index]])
-
-		functionNode.nodes = [funcParams, funcBody]
-
-		node.nodes.push(functionNode)
-
-		index += 2 // eat opening "{"
-		index = parseFuncBody(funcBody, tokens, index)
-
-		parseModule(node, tokens, index)
-		return
+		return parseModule(moduleNode, tokens, index)
 	}
 
 	throw new Error('Unreachable parseModule')
 }
 
 /**
+ *
+ * @param {Node}    funcParams
+ * @param {Token[]} tokens
+ * @param {number}  index - current token index
+ *
+ * @return {number} - last consumed token index
+ */
+function parseFuncParams(funcParams, tokens, index)
+{
+	for (;;index += 1) {
+		const t0 = tokens[index]
+		const t1 = tokens[index+1]
+
+		if (t0.type === TokenType.punctuation && t0.value === ')') break
+		if (t0.type === TokenType.punctuation && t0.value === ',') continue
+		index += 1 // Eats param name
+
+		const param = makeNode(funcParams, NodeType.parameter, t1.value, dataTypeMap[t0.value], [t0, t1])
+		funcParams.nodes.push(param)
+	}
+
+	// eats last ")"
+	return index+1
+}
+
+/**
  * Parses a function body
  *
- * @param {Node}    funcBodyNode
+ * @param {Node}    funcBody
  * @param {Token[]} tokens
  * @param {number}  index
  *
  * @return {number} - end index
  */
-function parseFuncBody(funcBodyNode, tokens, index)
+function parseFuncBody(funcBody, tokens, index)
 {
 	const t0 = tokens[index]
 	const t1 = tokens[index+1]
@@ -260,13 +262,13 @@ function parseFuncBody(funcBodyNode, tokens, index)
 	if (isDataType(t0) &&
 		t1.type === TokenType.word &&
 		t2.type === TokenType.punctuation && t2.value === ';') {
-		const varNode = makeNode(funcBodyNode, NodeType.localVar, t1.value, dataTypeMap[t0.value], [t0, t1, t2])
-		funcBodyNode.nodes.push(varNode)
+		const varNode = makeNode(funcBody, NodeType.localVar, t1.value, dataTypeMap[t0.value], [t0, t1, t2])
+		funcBody.nodes.push(varNode)
 
-		return parseFuncBody(funcBodyNode, tokens, index + 3)
+		return parseFuncBody(funcBody, tokens, index+3)
 	}
 
-	return parseForm(funcBodyNode, tokens, index)
+	return parseForm(funcBody, tokens, index)
 }
 
 /**
@@ -295,11 +297,11 @@ function parseForm(parentNode, tokens, index)
 		const returnNode = makeNode(parentNode, NodeType.return, parentNode.value, parentNode.dataType, [t0])
 		parentNode.nodes.push(returnNode)
 
-		index = parseExpression(returnNode, tokens, index + 1)
+		index = parseExpression(returnNode, tokens, index+1)
 
 		const tokenCloseBody = tokens[index]
 		if (tokenCloseBody.type === TokenType.punctuation && tokenCloseBody.value === '}')
-			return index + 1
+			return index+1
 
 		throw new Error('Found symbols after function return: ' + tokenCloseBody.value)
 	}
@@ -310,7 +312,7 @@ function parseForm(parentNode, tokens, index)
 		const branchNode = makeNode(parentNode, NodeType.branch, 0, DataType.na, [t0])
 		parentNode.nodes.push(branchNode)
 
-		return parseForm(parentNode, tokens, index + 2)
+		return parseForm(parentNode, tokens, index+2)
 	}
 
 	// branch name|index;
@@ -320,7 +322,7 @@ function parseForm(parentNode, tokens, index)
 		const branchNode = makeNode(parentNode, NodeType.branch, t1.value, DataType.na, [t0, t1])
 		parentNode.nodes.push(branchNode)
 
-		return parseForm(parentNode, tokens, index + 3)
+		return parseForm(parentNode, tokens, index+3)
 	}
 
 	// branch if (expression);
@@ -333,9 +335,9 @@ function parseForm(parentNode, tokens, index)
 		const predicate = makeNode(branchIfNode, NodeType.predicate, '', DataType.i32)
 		branchIfNode.nodes.push(predicate)
 
-		index = parseExpression(predicate, tokens, index + 3)
+		index = parseExpression(predicate, tokens, index+3)
 
-		return parseForm(parentNode, tokens, index + 1)
+		return parseForm(parentNode, tokens, index+1)
 	}
 
 	// branch name|index if (expression);
