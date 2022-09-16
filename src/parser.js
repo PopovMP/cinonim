@@ -18,6 +18,10 @@
  * @property {Node|null} parent
  */
 
+/**
+ * TokenType
+ * @enum {string}
+ */
 const TokenType = {
 	character  : 'character',
 	comment    : 'comment',
@@ -29,6 +33,7 @@ const TokenType = {
 	space      : 'space',
 	string     : 'string',
 	word       : 'word',
+	keyword    : 'keyword'
 }
 
 const NodeType = {
@@ -124,7 +129,7 @@ function makeNode(parent, type, value, dataType, tokens = [])
  */
 function isDataType(token)
 {
-	return token.type === TokenType.word && dataTypes.includes(token.value)
+	return token.type === TokenType.keyword && dataTypes.includes(token.value)
 }
 
 /**
@@ -161,8 +166,6 @@ function parseModule(moduleNode, tokens, index, )
 	const t1 = tokens[index+1]
 	const t2 = tokens[index+2]
 	const t3 = tokens[index+3]
-	const t4 = tokens[index+4]
-	const t5 = tokens[index+5]
 
 	// Global variable: int foo = 42;
 	if (isDataType(t0) &&
@@ -176,7 +179,7 @@ function parseModule(moduleNode, tokens, index, )
 	}
 
 	// Global const: const int foo = 42;
-	if (t0.type === TokenType.word && t0.value === 'const' &&
+	if (t0.type === TokenType.keyword && t0.value === 'const' &&
 		isDataType(t1) &&
 		t2.type === TokenType.word &&
 		t3.type === TokenType.operator && t3.value === '=') {
@@ -287,7 +290,7 @@ function parseForm(parentNode, tokens, index)
 
 	// Function return
 	// return expression;
-	if (t0.type === TokenType.word && t0.value === 'return') {
+	if (t0.type === TokenType.keyword && t0.value === 'return') {
 		const returnNode = makeNode(parentNode, NodeType.return, parentNode.value, parentNode.dataType, [t0])
 
 		index = parseExpression(returnNode, tokens, index+1)
@@ -318,7 +321,7 @@ function parseForm(parentNode, tokens, index)
 
 	// branch if (expression);
 	if (t0.type === TokenType.word && t0.value === 'branch' &&
-		t1.type === TokenType.word && t1.value === 'if'     &&
+		t1.type === TokenType.keyword && t1.value === 'if'     &&
 		t2.type === TokenType.punctuation && t2.value === '(') {
 		const branchIfNode  = makeNode(parentNode, NodeType.branchIf, 0, DataType.na, [t0, t1])
 		const predicateNode = makeNode(branchIfNode, NodeType.predicate, '', DataType.i32)
@@ -330,7 +333,7 @@ function parseForm(parentNode, tokens, index)
 	// branch name|index if (expression);
 	if (t0.type === TokenType.word && t0.value === 'branch' &&
 		(t1.type === TokenType.word || t1.type === TokenType.number) &&
-		t2.type === TokenType.word && t2.value === 'if'     &&
+		t2.type === TokenType.keyword && t2.value === 'if'     &&
 		t3.type === TokenType.punctuation && t3.value === '(') {
 		const branchIfNode  = makeNode(parentNode, NodeType.branchIf, t1.value, DataType.na, [t0, t1, t2])
 		const predicateNode = makeNode(branchIfNode, NodeType.predicate, '', DataType.i32)
@@ -398,7 +401,7 @@ function parseForm(parentNode, tokens, index)
 
 	// if (expression) { FORM }
 	// if (expression) { FORM } else { FORM }
-	if (t0.type === TokenType.word && t0.value === 'if' &&
+	if (t0.type === TokenType.keyword && t0.value === 'if' &&
 		t1.type === TokenType.punctuation && t1.value === '(') {
 
 		const ifNode = makeNode(parentNode, NodeType.if, '', DataType.na, [t0, t1])
@@ -409,7 +412,7 @@ function parseForm(parentNode, tokens, index)
 		const then = makeNode(ifNode, NodeType.then, '', DataType.na, [tokens[index]])
 		index = parseForm(then, tokens, index+1)
 
-		if (tokens[index].type === TokenType.word && tokens[index].value === 'else') {
+		if (tokens[index].type === TokenType.keyword && tokens[index].value === 'else') {
 			const elseNode = makeNode(ifNode, NodeType.else, '', DataType.na, [tokens[index]])
 			index = parseForm(elseNode, tokens, index+2)
 		}
