@@ -40,11 +40,13 @@ const TokenType = {
 
 const NodeType = {
 	assignment : 'assignment',
-	block      : 'block',
-	branch     : 'branch',
-	branchIf   : 'branchIf',
+	break      : 'break',
+	continue   : 'continue',
+	condition  : 'condition',
+	do         : 'do',
 	else       : 'else',
 	expression : 'expression',
+	for        : 'for',
 	funcBody   : 'funcBody',
 	funcParams : 'funcParams',
 	function   : 'function',
@@ -52,14 +54,14 @@ const NodeType = {
 	globalVar  : 'globalVar',
 	if         : 'if',
 	localVar   : 'localVar',
-	loop       : 'loop',
+	loopBody   : 'loopBody',
 	module     : 'module',
 	number     : 'number',
 	parameter  : 'parameter',
-	predicate  : 'predicate',
 	return     : 'return',
 	then       : 'then',
 	variable   : 'variable',
+	while      : 'while',
 }
 
 const DataType = {
@@ -175,7 +177,8 @@ function parseModule(moduleNode, tokens, index, )
 	const t2 = tokens[index+2]
 	const t3 = tokens[index+3]
 
-	// Global variable: int foo = 42;
+	// Global variable
+	// int foo = 42;
 	if (isDataType(t0) &&
 		t1.type === TokenType.word &&
 		t2.type === TokenType.operator && t2.value === '=') {
@@ -186,7 +189,8 @@ function parseModule(moduleNode, tokens, index, )
 		return parseModule(moduleNode, tokens, index+5)
 	}
 
-	// Global const: const int foo = 42;
+	// Global const
+	// const int foo = 42;
 	if (t0.type === TokenType.keyword && t0.value === 'const' &&
 		isDataType(t1) &&
 		t2.type === TokenType.word &&
@@ -198,7 +202,8 @@ function parseModule(moduleNode, tokens, index, )
 		return parseModule(moduleNode, tokens, index+6)
 	}
 
-	// Function declaration: int foo(int bar, int baz) { }
+	// Function declaration
+	// int foo(int bar, int baz) { }
 	if (isDataType(t0) &&
 		t1.type === TokenType.word &&
 		t2.type === TokenType.punctuation && t2.value === '(') {
@@ -216,7 +221,7 @@ function parseModule(moduleNode, tokens, index, )
 		return parseModule(moduleNode, tokens, index)
 	}
 
-	throw new Error('Unreachable parseModule')
+	throw new Error(`[${t0.line+1}, ${t0.column + 1}] Unrecognised symbol in module:  ${t0.value}`)
 }
 
 /**
@@ -290,7 +295,6 @@ function parseForm(parentNode, tokens, index)
 	const t0 = tokens[index]
 	const t1 = tokens[index+1]
 	const t2 = tokens[index+2]
-	const t3 = tokens[index+3]
 
 	// Form ends with "}"
 	if (t0.type === TokenType.punctuation && t0.value === '}')
@@ -310,80 +314,68 @@ function parseForm(parentNode, tokens, index)
 		throw new Error('Found symbols after function return: ' + tokenCloseBody.value)
 	}
 
-	// branch;
-	if (t0.type === TokenType.word && t0.value === 'branch' &&
+	// break;
+	if (t0.type === TokenType.keyword && t0.value === 'break' &&
 		t1.type === TokenType.punctuation && t1.value === ';') {
-		makeNode(parentNode, NodeType.branch, 0, DataType.na, t0)
+		makeNode(parentNode, NodeType.break, 0, DataType.na, t0)
 
 		return parseForm(parentNode, tokens, index+2)
 	}
 
-	// branch name|index;
-	if (t0.type === TokenType.word && t0.value === 'branch' &&
-		(t1.type === TokenType.word || t1.type === TokenType.number) &&
+	// break index;
+	if (t0.type === TokenType.keyword && t0.value === 'break' &&
+		t1.type === TokenType.number &&
 		t2.type === TokenType.punctuation && t2.value === ';') {
-		makeNode(parentNode, NodeType.branch, t1.value, DataType.na, t0)
+		makeNode(parentNode, NodeType.break, t1.value, DataType.na, t0)
 
 		return parseForm(parentNode, tokens, index+3)
 	}
 
-	// branch if (expression);
-	if (t0.type === TokenType.word && t0.value === 'branch' &&
-		t1.type === TokenType.keyword && t1.value === 'if'     &&
-		t2.type === TokenType.punctuation && t2.value === '(') {
-		const branchIfNode  = makeNode(parentNode, NodeType.branchIf, 0, DataType.na, t0)
-		const predicateNode = makeNode(branchIfNode, NodeType.predicate, '', DataType.i32)
-		index = parseExpression(predicateNode, tokens, index+3)
+	// continue;
+	if (t0.type === TokenType.keyword && t0.value === 'continue' &&
+		t1.type === TokenType.punctuation && t1.value === ';') {
+		makeNode(parentNode, NodeType.continue, 0, DataType.na, t0)
+
+		return parseForm(parentNode, tokens, index+2)
+	}
+
+	// continue index;
+	if (t0.type === TokenType.keyword && t0.value === 'continue' &&
+		t1.type === TokenType.number &&
+		t2.type === TokenType.punctuation && t2.value === ';') {
+		makeNode(parentNode, NodeType.continue, t1.value, DataType.na, t0)
+
+		return parseForm(parentNode, tokens, index+3)
+	}
+
+	// do { FORM } while (condition);
+	if (t0.type === TokenType.keyword && t0.value === 'do' &&
+		t1.type === TokenType.punctuation && t1.value === '{') {
+
+		const doNode = makeNode(parentNode, NodeType.do, '', DataType.na, t0)
+
+		const loopBody = makeNode(doNode, NodeType.loopBody, '', DataType.na, t2)
+		index = parseForm(loopBody, tokens, index+2)
+
+		index += 2
+		const condition = makeNode(doNode, NodeType.condition, '', DataType.i32, tokens[index])
+		index = parseExpression(condition, tokens, index)
 
 		return parseForm(parentNode, tokens, index+1)
 	}
 
-	// branch name|index if (expression);
-	if (t0.type === TokenType.word && t0.value === 'branch' &&
-		(t1.type === TokenType.word || t1.type === TokenType.number) &&
-		t2.type === TokenType.keyword && t2.value === 'if'     &&
-		t3.type === TokenType.punctuation && t3.value === '(') {
-		const branchIfNode  = makeNode(parentNode, NodeType.branchIf, t1.value, DataType.na, t0)
-		const predicateNode = makeNode(branchIfNode, NodeType.predicate, '', DataType.i32)
-		index = parseExpression(predicateNode, tokens, index+4)
+	// while (condition) { FORM }
+	if (t0.type === TokenType.keyword && t0.value === 'while' &&
+		t1.type === TokenType.punctuation && t1.value === '(') {
 
-		return parseForm(parentNode, tokens, index+1)
-	}
+		const whileNode = makeNode(parentNode, NodeType.while, '', DataType.na, t0)
 
-	// loop {
-	if (t0.type === TokenType.word && t0.value === 'loop' &&
-		t1.type === TokenType.punctuation && t1.value === '{') {
-		const loopNode = makeNode(parentNode, NodeType.loop, '', DataType.na, t0)
-		index = parseForm(loopNode, tokens, index+2)
+		const condition = makeNode(whileNode, NodeType.condition, '', DataType.i32, t2)
+		index = parseExpression(condition, tokens, index+2)
 
-		return parseForm(parentNode, tokens, index)
-	}
-
-	// loop name {
-	if (t0.type === TokenType.word && t0.value === 'loop' &&
-		t1.type === TokenType.word &&
-		t2.type === TokenType.punctuation && t2.value === '{') {
-		const loopNode = makeNode(parentNode, NodeType.loop, t1.value, DataType.na, t0)
-		index = parseForm(loopNode, tokens, index+3)
-
-		return parseForm(parentNode, tokens, index)
-	}
-
-	// block {
-	if (t0.type === TokenType.word && t0.value === 'block' &&
-		t1.type === TokenType.punctuation && t1.value === '{') {
-		const blockNode = makeNode(parentNode, NodeType.block, '', DataType.na, t0)
-		index = parseForm(blockNode, tokens, index+2)
-
-		return parseForm(parentNode, tokens, index)
-	}
-
-	// block name {
-	if (t0.type === TokenType.word && t0.value === 'block' &&
-		t1.type === TokenType.word &&
-		t2.type === TokenType.punctuation && t2.value === '{') {
-		const blockNode = makeNode(parentNode, NodeType.block, t1.value, DataType.na, t0)
-		index = parseForm(blockNode, tokens, index+3)
+		index += 2
+		const loopBody = makeNode(whileNode, NodeType.loopBody, '', DataType.na, tokens[index])
+		index = parseExpression(loopBody, tokens, index)
 
 		return parseForm(parentNode, tokens, index)
 	}
@@ -407,14 +399,14 @@ function parseForm(parentNode, tokens, index)
 		return parseForm(parentNode, tokens, index)
 	}
 
-	// if (expression) { FORM }
-	// if (expression) { FORM } else { FORM }
+	// if (condition) { FORM }
+	// if (condition) { FORM } else { FORM }
 	if (t0.type === TokenType.keyword && t0.value === 'if' &&
 		t1.type === TokenType.punctuation && t1.value === '(') {
 
 		const ifNode = makeNode(parentNode, NodeType.if, '', DataType.na, t0)
 
-		const predicate = makeNode(ifNode, NodeType.predicate, '', DataType.i32, t2)
+		const predicate = makeNode(ifNode, NodeType.condition, '', DataType.i32, t2)
 		index = parseExpression(predicate, tokens, index+2)
 
 		const then = makeNode(ifNode, NodeType.then, '', DataType.na, tokens[index])
@@ -428,7 +420,7 @@ function parseForm(parentNode, tokens, index)
 		return parseForm(parentNode, tokens, index)
 	}
 
-	throw new Error('Unreachable parseForm')
+	throw new Error(`[${t0.line+1}, ${t0.column + 1}] Unrecognised symbol in ${parentNode.type}:  ${t0.value}`)
 }
 
 /**
@@ -480,7 +472,7 @@ function parseExpression(parentNode, tokens, index)
 		return parseExpression(parentNode, tokens, index+1)
 	}
 
-	throw new Error('Unreachable parseExpression')
+	throw new Error(`[${t0.line+1}, ${t0.column + 1}] Unrecognised symbol in ${parentNode.type}:  ${t0.value}`)
 }
 
 /**
