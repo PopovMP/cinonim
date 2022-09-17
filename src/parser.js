@@ -83,6 +83,12 @@ const dataTypeMap = {
 	void     : DataType.void,
 }
 
+const suffixDataType = {
+	L : DataType.i64,
+	F : DataType.f32,
+	D : DataType.f64,
+}
+
 // noinspection JSUnusedLocalSymbols
 const operatorPrecedence = {
 	'('   : 18, ')': 18,
@@ -449,13 +455,16 @@ function parseExpression(parentNode, tokens, index)
 	}
 
 	// Number
-	// 42 | 3.14
+	// 42 | 3.14F
 	if (t0.type === TokenType.number) {
-		const value = parentNode.dataType === DataType.i32 || parentNode.dataType === DataType.i64
-			? parseInt(t0.value)
-			: parseFloat(t0.value)
+		const sfxMatch = t0.value.match(/([LFD])$/)
+		const suffix   = sfxMatch ? sfxMatch[1] : ''
+		const dataType = suffix === '' ? parentNode.dataType : suffixDataType[suffix]
+		const value    = dataType === DataType.i32 || dataType === DataType.i64
+							? parseInt(t0.value)
+							: parseFloat(t0.value)
 
-		makeNode(parentNode, NodeType.number, value, parentNode.dataType, t0)
+		makeNode(parentNode, NodeType.number, value, dataType, t0)
 
 		return parseExpression(parentNode, tokens, index+1)
 	}
