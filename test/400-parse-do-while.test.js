@@ -16,7 +16,7 @@ const src = '' +
 		res = 7L;
 		continue;
 	} while (n);
-	
+
 	return res;
 }`
 
@@ -30,7 +30,7 @@ const expected = '' +
             do
                 loopBody
                     if
-                        condition: i32
+                        expression: i32
                             parameter n: i32
                         then
                             assignment res: i64
@@ -41,7 +41,7 @@ const expected = '' +
                         localVar res: i64
                         number 7: i64
                     continue 0
-                condition: i32
+                expression: i32
                     parameter n: i32
             return foo: i64
                 localVar res: i64`

@@ -12,12 +12,12 @@
 /**
  * @typedef {Object} Node
  *
- * @property {string}    type
- * @property {*}         value    - value
- * @property {string}    dataType - na, i32, i64, f32, f64, void
- * @property {Node[]}    nodes    - list of underlying nodes
- * @property {Token}     token
- * @property {Node|null} parent
+ * @property {NodeType}   type
+ * @property {*}          value    - value
+ * @property {string}     dataType - na, i32, i64, f32, f64, void
+ * @property {Node[]}     nodes    - list of underlying nodes
+ * @property {Token|null} token
+ * @property {Node|null}  parent
  */
 
 /**
@@ -38,32 +38,48 @@ const TokenType = {
 	keyword    : 'keyword'
 }
 
+/**
+ * NodeType
+ * @enum {string}
+ */
 const NodeType = {
-	assignment : 'assignment',
-	break      : 'break',
-	continue   : 'continue',
-	condition  : 'condition',
-	do         : 'do',
-	else       : 'else',
-	expression : 'expression',
-	for        : 'for',
-	funcBody   : 'funcBody',
-	funcParams : 'funcParams',
-	function   : 'function',
-	globalConst: 'globalConst',
-	globalVar  : 'globalVar',
-	if         : 'if',
-	localVar   : 'localVar',
-	loopBody   : 'loopBody',
-	module     : 'module',
-	number     : 'number',
-	parameter  : 'parameter',
-	return     : 'return',
-	then       : 'then',
-	variable   : 'variable',
-	while      : 'while',
+	assignment     : 'assignment',
+	binaryOperator : 'binaryOperator',
+	break          : 'break',
+	condition      : 'condition',
+	continue       : 'continue',
+	do             : 'do',
+	else           : 'else',
+	expression     : 'expression',
+	for            : 'for',
+	funcBody       : 'funcBody',
+	funcParams     : 'funcParams',
+	function       : 'function',
+	functionCall   : 'functionCall',
+	globalConst    : 'globalConst',
+	globalVar      : 'globalVar',
+	if             : 'if',
+	localVar       : 'localVar',
+	loopBody       : 'loopBody',
+	module         : 'module',
+	number         : 'number',
+	operator       : 'operator',
+	parameter      : 'parameter',
+	return         : 'return',
+	terminal       : 'terminal',
+	then           : 'then',
+	prefixOperator : 'prefixOperator',
+	postfixOperator: 'postfixOperator',
+	variable       : 'variable',
+	variableLookup : 'variableLookup',
+	while          : 'while',
 }
 
+
+/**
+ * DataType
+ * @enum {string}
+ */
 const DataType = {
 	na    : 'na',
 	i32   : 'i32',
@@ -78,11 +94,11 @@ const DataType = {
 const dataTypes = ['int', 'long', 'float', 'double', 'void']
 
 const dataTypeMap = {
-	int      : DataType.i32,
-	long     : DataType.i64,
-	float    : DataType.f32,
-	double   : DataType.f64,
-	void     : DataType.void,
+	int    : DataType.i32,
+	long   : DataType.i64,
+	float  : DataType.f32,
+	double : DataType.f64,
+	void   : DataType.void,
 }
 
 const suffixDataType = {
@@ -113,14 +129,14 @@ const operatorPrecedence = {
  * Makes a new node
  *
  * @param {Node|null}     parent   - parent Node
- * @param {string}        type     - NodeType
+ * @param {NodeType}      type     - NodeType
  * @param {string|number} value    - variable name, function name, number, ...
  * @param {string}        dataType - DataType
- * @param {Token}        [token] - based tokens
+ * @param {Token|null}    [token] - based tokens
  *
  * @return {Node}
  */
-function makeNode(parent, type, value, dataType, token)
+function makeNode(parent, type, value, dataType, token= null)
 {
 	const node = {parent, type, value, dataType, token, nodes: []}
 
@@ -156,7 +172,7 @@ function parse(tokens)
 	const index = 0
 	parseModule(moduleNode, tokens, index)
 
-	return moduleNode
+	return normaliseExpressionChain(moduleNode)
 }
 
 /**
@@ -358,7 +374,7 @@ function parseForm(parentNode, tokens, index)
 		index = parseForm(loopBody, tokens, index+2)
 
 		index += 2
-		const condition = makeNode(doNode, NodeType.condition, '', DataType.i32, tokens[index])
+		const condition = makeNode(doNode, NodeType.expression, '', DataType.i32, tokens[index])
 		index = parseExpression(condition, tokens, index)
 
 		return parseForm(parentNode, tokens, index+1)
@@ -370,7 +386,7 @@ function parseForm(parentNode, tokens, index)
 
 		const whileNode = makeNode(parentNode, NodeType.while, '', DataType.na, t0)
 
-		const condition = makeNode(whileNode, NodeType.condition, '', DataType.i32, t2)
+		const condition = makeNode(whileNode, NodeType.expression, '', DataType.i32, t2)
 		index = parseExpression(condition, tokens, index+2)
 
 		index += 2
@@ -406,8 +422,8 @@ function parseForm(parentNode, tokens, index)
 
 		const ifNode = makeNode(parentNode, NodeType.if, '', DataType.na, t0)
 
-		const predicate = makeNode(ifNode, NodeType.condition, '', DataType.i32, t2)
-		index = parseExpression(predicate, tokens, index+2)
+		const condition = makeNode(ifNode, NodeType.expression, '', DataType.i32, t2)
+		index = parseExpression(condition, tokens, index+2)
 
 		const then = makeNode(ifNode, NodeType.then, '', DataType.na, tokens[index])
 		index = parseForm(then, tokens, index+1)
@@ -436,14 +452,48 @@ function parseForm(parentNode, tokens, index)
 function parseExpression(parentNode, tokens, index)
 {
 	const t0 = tokens[index]
+	const exprNode = parentNode.type === NodeType.expression && parentNode.value === '('
+				? parentNode
+				: makeNode(parentNode, NodeType.expression, '', parentNode.dataType, t0)
 
-	if (t0.type === TokenType.punctuation && [';', ',', ')'].includes(t0.value))
-		return index + 1
+	return parseExpressionChain(exprNode, tokens, index) + 1
+}
+
+/**
+ * Checks if a token ends an expression chain
+ *
+ * @param {Token[]} tokens
+ * @param {number}  index
+ * @return {boolean}
+ */
+function isExprTerminalToken(tokens, index) {
+	const t0 = tokens[index]
+
+	return t0.type === TokenType.punctuation && [';', ',', ')'].includes(t0.value)
+}
+
+/**
+ * Gets the type of the next node
+ *
+ * @param {Node}     parentNode
+ * @param {Token[]}  tokens
+ * @param {number}   index
+ *
+ * @return {number} the index of the terminal token
+ */
+function parseExpressionChain(parentNode, tokens, index)
+{
+	const t0 = tokens[index]
+	const t1 = tokens[index+1]
+
+	if ( isExprTerminalToken(tokens, index) )
+		return index
 
 	// Open parenthesis
 	if (t0.type === TokenType.punctuation && t0.value === '(') {
-		const expressionNode = makeNode(parentNode, NodeType.expression, '', parentNode.dataType, t0)
-		return parseExpression(expressionNode, tokens, index+1)
+		const openParen = makeNode(parentNode, NodeType.expression, '(', parentNode.dataType, t0)
+		index = parseExpression(openParen, tokens, index+1)
+		return parseExpressionChain(parentNode, tokens, index)
 	}
 
 	// Number
@@ -453,12 +503,42 @@ function parseExpression(parentNode, tokens, index)
 		const suffix   = sfxMatch ? sfxMatch[1] : ''
 		const dataType = suffix === '' ? parentNode.dataType : suffixDataType[suffix]
 		const value    = dataType === DataType.i32 || dataType === DataType.i64
-							? parseInt(t0.value)
-							: parseFloat(t0.value)
+			? parseInt(t0.value)
+			: parseFloat(t0.value)
 
 		makeNode(parentNode, NodeType.number, value, dataType, t0)
+		return parseExpressionChain(parentNode, tokens, index+1)
+	}
 
-		return parseExpression(parentNode, tokens, index+1)
+	// Operator
+	// +, -, ^, ...
+	if (t0.type === TokenType.operator) {
+		makeNode(parentNode, NodeType.operator, t0.value, parentNode.dataType, t0)
+		return parseExpressionChain(parentNode, tokens, index+1)
+	}
+
+	// Function call
+	// foo(bar, ...)
+	if (t0.type === TokenType.word &&
+		t1.type === TokenType.punctuation && t1.value === '(') {
+		const funcName = t0.value
+		const funcNode = lookupVar(parentNode, funcName)
+
+		if (funcNode === null || funcNode.type !== NodeType.function)
+			throw new Error(`[${t0.line+1}, ${t0.column+1}] Cannot find a function: ${funcName}`)
+
+		const funcCall = makeNode(parentNode, NodeType.functionCall, t0.value, funcNode.dataType, t0)
+		index += 2
+
+		// Void call
+		if (t1.type === TokenType.punctuation && t1.type === ')')
+			return parseExpressionChain(parentNode, tokens, index)
+
+		do {
+			index = parseExpression(funcCall, tokens, index)
+		} while(tokens[index-1].type === TokenType.punctuation && tokens[index-1].value === ',' )
+
+		return parseExpressionChain(parentNode, tokens, index)
 	}
 
 	// Variable lookup
@@ -467,12 +547,48 @@ function parseExpression(parentNode, tokens, index)
 		const variableNode = lookupVar(parentNode, t0.value)
 		if (variableNode === null)
 			throw new Error('Cannot find a variable: ' + t0.value)
-		parentNode.nodes.push(variableNode)
 
-		return parseExpression(parentNode, tokens, index+1)
+		parentNode.nodes.push(variableNode)
+		return parseExpressionChain(parentNode, tokens, index+1)
 	}
 
-	throw new Error(`[${t0.line+1}, ${t0.column + 1}] Unrecognised symbol in ${parentNode.type}:  ${t0.value}`)
+	throw new Error(`[${t0.line+1}, ${t0.column + 1}] Unrecognised expression symbol in ${parentNode.type}:  ${t0.value}`)
+}
+
+/**
+ * Parses operator precedence
+ *
+ * @param {Node} moduleNode
+ *
+ * @return {Node}
+ */
+function normaliseExpressionChain(moduleNode)
+{
+	loop(moduleNode)
+
+	return moduleNode
+
+	function loop(node)
+	{
+		if (node.nodes.length === 0) return
+
+		for (let i = 0; i < node.nodes.length; i++){
+			const expr = node.nodes[i]
+			if (expr.type === NodeType.expression && expr.nodes.length === 1) {
+				const ch = expr.nodes[0]
+				node.nodes[i] = {
+					parent  : node,
+					type    : ch.type,
+					dataType: ch.dataType,
+					value   : ch.value,
+					nodes   : ch.nodes,
+					token   : ch.token,
+				}
+			}
+
+			loop(node.nodes[i])
+		}
+	}
 }
 
 /**
@@ -499,6 +615,10 @@ function lookupVar(parentNode, varName)
 					return par
 			}
 		}
+
+		// Function call
+		if (node.type === NodeType.function && node.value === varName)
+			return node
 
 		// Global variable
 		if (node.type === NodeType.globalVar && node.value === varName)
