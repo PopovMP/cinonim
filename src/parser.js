@@ -128,6 +128,8 @@ const operatorPrecedence = {
 	','  : 1, // Comma sequence
 }
 
+const binaryOperators = '+ - * / ^ % < <= == >= > != && ||'.split(' ')
+
 /**
  * Makes a new node
  *
@@ -586,6 +588,99 @@ function normaliseExpressionChain(moduleNode)
 					value   : ch.value,
 					nodes   : ch.nodes,
 					token   : ch.token,
+				}
+			}
+			else if (expr.type === NodeType.expression && expr.nodes.length === 2) {
+				const ch0 = expr.nodes[0]
+				const ch1 = expr.nodes[1]
+
+				if (ch0.type === NodeType.operator &&
+					(ch0.value === '-' || ch0.value === '!' || ch0.value === '++' || ch0.value === '--')) {
+					const prefixOperator = {
+						parent  : node,
+						type    : NodeType.prefixOperator,
+						dataType: ch0.dataType,
+						value   : ch0.value,
+						nodes   : [],
+						token   : ch0.token,
+					}
+
+					const arg = {
+						parent  : prefixOperator,
+						type    : ch1.type,
+						dataType: ch1.dataType,
+						value   : ch1.value,
+						nodes   : ch1.nodes,
+						token   : ch1.token,
+					}
+
+					prefixOperator.nodes = [arg]
+					node.nodes[i] = prefixOperator
+				}
+			}
+			else if (expr.type === NodeType.expression && expr.nodes.length === 2) {
+				const ch0 = expr.nodes[0]
+				const ch1 = expr.nodes[1]
+
+				if (ch1.type === NodeType.operator &&
+					(ch1.value === '++' || ch1.value === '--')) {
+					const postfixOperator = {
+						parent  : node,
+						type    : NodeType.postfixOperator,
+						dataType: ch1.dataType,
+						value   : ch1.value,
+						nodes   : [],
+						token   : ch1.token,
+					}
+
+					const arg = {
+						parent  : postfixOperator,
+						type    : ch0.type,
+						dataType: ch0.dataType,
+						value   : ch0.value,
+						nodes   : ch0.nodes,
+						token   : ch0.token,
+					}
+
+					postfixOperator.nodes = [arg]
+					node.nodes[i] = postfixOperator
+				}
+			}
+			else if (expr.type === NodeType.expression && expr.nodes.length === 3) {
+				const ch0 = expr.nodes[0]
+				const ch1 = expr.nodes[1]
+				const ch2 = expr.nodes[2]
+
+				if (ch1.type === NodeType.operator && binaryOperators.includes(ch1.value)) {
+					const binaryOperator = {
+						parent  : node,
+						type    : NodeType.binaryOperator,
+						dataType: ch1.dataType,
+						value   : ch1.value,
+						nodes   : [],
+						token   : ch1.token,
+					}
+
+					const argA = {
+						parent  : binaryOperator,
+						type    : ch0.type,
+						dataType: ch0.dataType,
+						value   : ch0.value,
+						nodes   : ch0.nodes,
+						token   : ch0.token,
+					}
+
+					const argB = {
+						parent  : binaryOperator,
+						type    : ch2.type,
+						dataType: ch2.dataType,
+						value   : ch2.value,
+						nodes   : ch2.nodes,
+						token   : ch2.token,
+					}
+
+					binaryOperator.nodes = [argA, argB]
+					node.nodes[i] = binaryOperator
 				}
 			}
 
