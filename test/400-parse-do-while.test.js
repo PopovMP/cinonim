@@ -30,7 +30,7 @@ const expected = '' +
             do
                 loopBody
                     if
-                        expression: i32
+                        condition: i32
                             localGet n: i32
                         then
                             localSet res: i64
@@ -39,7 +39,7 @@ const expected = '' +
                     localSet res: i64
                         number 7: i64
                     continue 0
-                expression: i32
+                condition: i32
                     localGet n: i32
             return foo: i64
                 localGet res: i64`

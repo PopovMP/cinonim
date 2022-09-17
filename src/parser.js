@@ -3,10 +3,10 @@
 /**
  * @typedef {Object} Token
  *
- * @property {number} line
- * @property {number} column
+ * @property {number}    line
+ * @property {number}    column
  * @property {TokenType} type
- * @property {string} value
+ * @property {string}    value
  */
 
 /**
@@ -112,20 +112,20 @@ const suffixDataType = {
 
 // noinspection JSUnusedLocalSymbols
 const operatorPrecedence = {
-	'('   : 18, ')': 18,
-	'['   : 17, ']': 17, 'funcCall': 17,
-	'..++': 15, '..--': 15, // Postfix increment, decrement
-	'++..': 14, '--..': 14, // Prefix  increment, decrement
-	'-..' : 14,             // Negate
-	'**'  : 13, '^' : 13,   // Power
-	'*'   : 12, '/' : 12, '%': 12,
-	'+'   : 11, '-' : 11,
-	'<'   : 9,  '<=': 9,  '>': 9, '>=': 9,
-	'=='  : 8, '!=' : 8,
-	'&&'  : 4,
-	'||'  : 3,
-	'?:'  : 2, // Ternary operator
-	','   : 1, // Comma sequence
+	'('  : 18, ')'  : 18,
+	'['  : 17, ']'  : 17, 'funcCall': 17,
+	'.++': 15, '.--': 15, // Postfix increment, decrement
+	'++.': 14, '--.': 14, // Prefix  increment, decrement
+	'-.' : 14, '!'  : 14, // Negate, not
+	'**' : 13, '^'  : 13, // Power
+	'*'  : 12, '/'  : 12, '%': 12,
+	'+'  : 11, '-'  : 11,
+	'<'  : 9,  '<=' : 9,  '>': 9, '>=': 9,
+	'==' : 8, '!='  : 8,
+	'&&' : 4,
+	'||' : 3,
+	'?:' : 2, // Ternary operator
+	','  : 1, // Comma sequence
 }
 
 /**
@@ -240,7 +240,7 @@ function parseModule(moduleNode, tokens, index, )
 		return parseModule(moduleNode, tokens, index)
 	}
 
-	throw new Error(`[${t0.line+1}, ${t0.column + 1}] Unrecognised symbol in module:  ${t0.value}`)
+	throw new Error(`[${t0.line+1}, ${t0.column+1}] Unrecognised symbol in module:  ${t0.value}`)
 }
 
 /**
@@ -326,18 +326,17 @@ function parseForm(parentNode, tokens, index)
 
 		index = parseExpression(returnNode, tokens, index+1)
 
-		const tokenCloseBody = tokens[index]
-		if (tokenCloseBody.type === TokenType.punctuation && tokenCloseBody.value === '}')
+		const tk = tokens[index]
+		if (tk.type === TokenType.punctuation && tk.value === '}')
 			return index+1
 
-		throw new Error('Found symbols after function return: ' + tokenCloseBody.value)
+		throw new Error(`[${tk.line+1}, ${tk.column+1}] Found symbols after function return: ${tk.value}`)
 	}
 
 	// break;
 	if (t0.type === TokenType.keyword && t0.value === 'break' &&
 		t1.type === TokenType.punctuation && t1.value === ';') {
 		makeNode(parentNode, NodeType.break, 0, DataType.na, t0)
-
 		return parseForm(parentNode, tokens, index+2)
 	}
 
@@ -346,7 +345,6 @@ function parseForm(parentNode, tokens, index)
 		t1.type === TokenType.number &&
 		t2.type === TokenType.punctuation && t2.value === ';') {
 		makeNode(parentNode, NodeType.break, t1.value, DataType.na, t0)
-
 		return parseForm(parentNode, tokens, index+3)
 	}
 
@@ -354,7 +352,6 @@ function parseForm(parentNode, tokens, index)
 	if (t0.type === TokenType.keyword && t0.value === 'continue' &&
 		t1.type === TokenType.punctuation && t1.value === ';') {
 		makeNode(parentNode, NodeType.continue, 0, DataType.na, t0)
-
 		return parseForm(parentNode, tokens, index+2)
 	}
 
@@ -363,7 +360,6 @@ function parseForm(parentNode, tokens, index)
 		t1.type === TokenType.number &&
 		t2.type === TokenType.punctuation && t2.value === ';') {
 		makeNode(parentNode, NodeType.continue, t1.value, DataType.na, t0)
-
 		return parseForm(parentNode, tokens, index+3)
 	}
 
@@ -377,7 +373,7 @@ function parseForm(parentNode, tokens, index)
 		index = parseForm(loopBody, tokens, index+2)
 
 		index += 2
-		const condition = makeNode(doNode, NodeType.expression, '', DataType.i32, tokens[index])
+		const condition = makeNode(doNode, NodeType.condition, '', DataType.i32, tokens[index])
 		index = parseExpression(condition, tokens, index)
 
 		return parseForm(parentNode, tokens, index+1)
@@ -389,7 +385,7 @@ function parseForm(parentNode, tokens, index)
 
 		const whileNode = makeNode(parentNode, NodeType.while, '', DataType.na, t0)
 
-		const condition = makeNode(whileNode, NodeType.expression, '', DataType.i32, t2)
+		const condition = makeNode(whileNode, NodeType.condition, '', DataType.i32, t2)
 		index = parseExpression(condition, tokens, index+2)
 
 		index += 2
@@ -425,7 +421,7 @@ function parseForm(parentNode, tokens, index)
 
 		const ifNode = makeNode(parentNode, NodeType.if, '', DataType.na, t0)
 
-		const condition = makeNode(ifNode, NodeType.expression, '', DataType.i32, t2)
+		const condition = makeNode(ifNode, NodeType.condition, '', DataType.i32, t2)
 		index = parseExpression(condition, tokens, index+2)
 
 		const then = makeNode(ifNode, NodeType.then, '', DataType.na, tokens[index])

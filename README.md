@@ -1,6 +1,6 @@
-# Peperoni - C like language targeting WAT
+# Peperoni - C like language targeting WebAssembly
 
-**Peperoni** aims to be directly transpiled to WAT.
+**Peperoni** aims to be directly transpiled to WebAssembly.
 
 ## Data types
   * **int**    -> **i32**
@@ -17,34 +17,21 @@
 
 ## Global variable and constant definition
 
-Global variables must be initialised with a number.
+Global variables and constants must be initialised with a number.
 
 ```c
-int foo = 42;
+int    foo = 42;
+long   bar = 66L;
+float  baz = 2.1F;
+double pi  = 3.14;
 ``` 
-
-```wat
-(global $foo (mut i32) (i32.const 42))
-```
-
-Global constants must be initialised with a number.
-
-```c
-const double bar = 3.14;
-``` 
-
-```wat
-(global $bar f64 (f64.const 3.14))
-```
 
 ## Function declaration
 
 ```c
-int sum(int a, int b) { }
-```
+int sum(int m, int n) { return m + n; }
 
-```wat
-(func $sum (param $a i32) (param $b i32) (result i32) )
+void foo(double bar) { ... }
 ```
 
 ## Local variable declaration
@@ -58,55 +45,48 @@ void foo() {
 }
 ``` 
 
-```wat
-(func $foo 
-    (local $bar i32)
-    (local $baz f64))
-```
-
 ## Assignment
 
-Local variable assignment
+Local and global variable assignment
 
 ```c
-void foo() {
-    int bar;
+doble foo = 1.1;
+
+void func(int bar) {
+    int baz;
+
+    foo = 3.14
     bar = 42;
 }
 ```
 
-```wat
-(func $foo
-    (local $bar i32)
-    (local.set $bar (i32.const 42)))
-```
+## Conditionals
 
-Function parameter assignment
+**if** accepts an `int` number or expression.
 
 ```c
-void foo(float bar) {
-    bar = 3.14;
+int books;
+
+if (books) {
+ // statements
+} else {
+ // statements
 }
 ```
 
-```wat
-(func $foo (param $bar f32)
-    (local.set $bar (f32.const 3.14)))
-```
-
-Global variable assignment
+## Loops
 
 ```c
-double bar = 0;
-void foo() {
-    bar = 3.14;
-}
-```
+do {
+    break;
+    continue;
+} while (condition: i32);
 
-```wat
-(global $bar f64 (f64.const 0))
-(func $foo
-    (global.set $bar (f64.const 3.14)))
+while (condition: i32) {
+    break;
+    continue;
+}
+
 ```
 
 ## Grammar
@@ -121,28 +101,28 @@ numeric-type     = "int"  | "long" | "float" | "double" ;
 alphanum         = [a-z A-Z]+ [a-z A-Z 0-9]* ;
 numeric          = "-"? [0-9]+ ("." [0-9]+)? ;
 parameter        = numeric-type, alphanum;
-function-body    = local-variable*, statement*, return? ;
+function-body    = local-variable*, statement* ;
 local-variable   = numeric-type, alphanum, ";" ;
 return           = "return", expression?, ";" ;
-statement        = assignment | block  | loop | if | function-call, ";" | statement ;
+statement        = assignment | do | while | if | function-call, ";" | statement ;
 assignment       = alphanum, "=", expression, ";" ;
 function-call    = alphanum, "(", (expression, (",", expression)* )?, ")" ;
-block            = "block", alphanum?, "{", block-body?, "}" ;
-loop             = "loop" , alphanum?, "{", block-body?, "}" ;
-block-body       = (statement | branch | branch-if)* ;
-branch           = "br", (alphanum | numeric)?, ";" ;
-branch-if        = "br", (alphanum | numeric)?, "if", "(", expression, ")", ";" ;
+do               = "do", "{", loop-body?, "}",  "while", "(", expression, ")", ";" ;
+while            = "while", "(", expression, ")", "{", loop-body?, "}" ;
+loop-body        = {statement | break | continue} ;
+break            = "break", numeric)?, ";" ;
+continue         = "continue", numeric)?, ";" ;
 if               = "if", "(", expression, ")", "{", statement*, "}", ("{", "else", statement* "}")? ;
 expression       = grouping | numeric | variable-lookup | function-call | unary-operation |
                    binary-operation | expression;
 grouping         = "(", expression, ")" ;
 variable-lookup  = alphanum	;
 binary-operation = expression, binary-operator, expression;
-unary-operation  = unary-operator, (numeric | variable-lookup | function-call | grouping) ;
-unary-operator   = "-" | "!";
+unary-operation  = prefix-operator, (numeric | variable-lookup | function-call | grouping) ;
+prefix-operator  = "-" | "!";
 binary-operator  =  "+"  | "-" | "*" | "/" | "%" | "||" | "&&" | "==" | "" | "" | "=" | "=" | "!=" ;
-keyword          = "block" | "br" | "const" | "double" | "else" | "float" | "if" | "int" | "long" |
-                   "loop" | "return" | "void";
+keyword          = "break" | "continue" | "const"  | "do"   | "double" | "else" | "float" | "if" | "int" |
+                   "long"  | "loop"     | "return" | "void" | "while";
 ```
 
 ## AST structure
@@ -164,53 +144,62 @@ module
                             +-- [*] FORM 
 
 FORM =
-    | assignment
-    | block
-    | branch
-    | branchIf
+    | localSet
+    | globalSet
+    | do
+    | while
+    | break
+    | continue
     | funcCall
     | if
-    | loop
     | return
 
-assignment {value: varName, dataType: varDataType}
+globalSet {value: varName, dataType: varDataType}
     \-- [1] expression
 
-block {value: ?label}
-    \-- [*] FORM
+localSet {value: varName, dataType: varDataType}
+    \-- [1] expression
 
-branch {value: ?label|index}
+break    {value: ?index}
 
-branchIf {value: ?label|index}
-    +-- [1] predicate {value: '', dataType: i32}
-                \-- [1] expression
+continue {value: ?index}
 
 funcCall {value: funcName, dataType: funcDataType}
     \-- [*] expression
 
 if
-    +-- [1] predicate {value: '', dataType: i32}
+    +-- [1] condition: i32
     |           \-- [1] expression
     +-- [1] then
     |           \-- [*] FORM
     \-- [?] else
                 \-- [*] FORM
 
-loop {value: ?label}
-    \-- [*] FORM
+do
+    +-- [1] loopBody
+    |           \-- [*] FORM
+    \-- [1] condition
+
+while
+    +-- [1] condition
+    \-- [1] loopBody
+                \-- [*] FORM
 
 return {value: funcName, dataType: funcDataType}
     \-- [1] expression
 
 expression
     | [1] number
-    | [1] unaryOp
+    | [1] prefixOperator
     |           \-- [1] expression
-    | [1] binaryOp
+    | [1] postfixOperator
+    |           \-- [1] expression
+    | [1] binaryOperator
     |           +-- [1] expression
     |           \-- [1] expression
     | [1] expression
     | [1] funcCall
     |           \-- [*] expression
-    | [1] varLookup
+    | [1] localGet
+    | [1] globalGet
 ```
