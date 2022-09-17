@@ -43,9 +43,9 @@ double foo() {
         funcBody square: f64
             return square: f64
                 expression: f64
-                    parameter m: f64
+                    localGet m: f64
                     operator *: f64
-                    parameter n: f64
+                    localGet n: f64
     function foo: f64
         funcParams foo
         funcBody foo: f64
@@ -62,17 +62,14 @@ double foo() {
                             number 7: f64
                             operator *: f64
                             expression (: f64
-                                globalConst bar: i64
-                                    number 2: i64
+                                globalGet bar: i64
                                 operator +: f64
                                 number 2: f64
                     expression: f64
-                        globalConst bar: i64
-                            number 2: i64
+                        globalGet bar: i64
                         operator *: f64
                         expression (: f64
-                            globalConst bar: i64
-                                number 2: i64
+                            globalGet bar: i64
                             operator +: f64
                             number 2: f64`
 		strictEqual(str, expected)

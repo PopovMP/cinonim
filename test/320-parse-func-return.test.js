@@ -76,7 +76,7 @@ describe('function return', () => {
 		strictEqual(returnNode.dataType,  DataType.i32,    'returnNode.dataType must be i32')
 
 		strictEqual(typeof valueNode,    'object',           'valueNode must be an object')
-		strictEqual(valueNode.type,      NodeType.globalVar, 'valueNode.type must be NodeType.globalVar')
+		strictEqual(valueNode.type,      NodeType.globalGet, 'valueNode.type must be NodeType.globalGet')
 		strictEqual(valueNode.value,     'bar',              'valueNode.value must be "bar')
 		strictEqual(valueNode.dataType,  DataType.i32,       'valueNode.dataType must be i32')
 	})
@@ -92,10 +92,10 @@ describe('function return', () => {
 		const [returnNode] = funcBody.nodes
 		const [valueNode]  = returnNode.nodes
 
-		strictEqual(typeof valueNode,    'object',             'valueNode must be an object')
-		strictEqual(valueNode.type,      NodeType.globalConst, 'valueNode.type must be NodeType.globalConst')
-		strictEqual(valueNode.value,     'bar',                'valueNode.value must be "bar')
-		strictEqual(valueNode.dataType,  DataType.i32,         'valueNode.dataType must be i32')
+		strictEqual(typeof valueNode,    'object',           'valueNode must be an object')
+		strictEqual(valueNode.type,      NodeType.globalGet, 'valueNode.type must be NodeType.globalGet')
+		strictEqual(valueNode.value,     'bar',              'valueNode.value must be "bar')
+		strictEqual(valueNode.dataType,  DataType.i32,       'valueNode.dataType must be i32')
 	})
 
 	it('return function parameter', () => {
@@ -108,10 +108,10 @@ describe('function return', () => {
 		const [returnNode]  = funcBody.nodes
 		const [valueNode]   = returnNode.nodes
 
-		strictEqual(typeof valueNode,    'object',           'valueNode must be an object')
-		strictEqual(valueNode.type,      NodeType.parameter, 'valueNode.type must be NodeType.parameter')
-		strictEqual(valueNode.value,     'bar',              'valueNode.value must be "bar')
-		strictEqual(valueNode.dataType,  DataType.i32,       'valueNode.dataType must be i32')
+		strictEqual(typeof valueNode,    'object',          'valueNode must be an object')
+		strictEqual(valueNode.type,      NodeType.localGet, 'valueNode.type must be NodeType.localGet')
+		strictEqual(valueNode.value,     'bar',             'valueNode.value must be "bar')
+		strictEqual(valueNode.dataType,  DataType.i32,      'valueNode.dataType must be i32')
 	})
 
 	it('return local variable', () => {
@@ -126,7 +126,7 @@ describe('function return', () => {
 		const [valueNode]   = returnNode.nodes
 
 		strictEqual(typeof valueNode,    'object',          'valueNode must be an object')
-		strictEqual(valueNode.type,      NodeType.localVar, 'valueNode.type must be NodeType.localVar')
+		strictEqual(valueNode.type,      NodeType.localGet, 'valueNode.type must be NodeType.localGet')
 		strictEqual(valueNode.value,     'bar',             'valueNode.value must be "bar')
 		strictEqual(valueNode.dataType,  DataType.i32,      'valueNode.dataType must be i32')
 	})

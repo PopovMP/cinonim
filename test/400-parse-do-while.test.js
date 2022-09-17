@@ -31,20 +31,18 @@ const expected = '' +
                 loopBody
                     if
                         expression: i32
-                            parameter n: i32
+                            localGet n: i32
                         then
-                            assignment res: i64
-                                localVar res: i64
+                            localSet res: i64
                                 number 42: i64
                             break 0
-                    assignment res: i64
-                        localVar res: i64
+                    localSet res: i64
                         number 7: i64
                     continue 0
                 expression: i32
-                    parameter n: i32
+                    localGet n: i32
             return foo: i64
-                localVar res: i64`
+                localGet res: i64`
 
 const tokens     = tokenize(src)
 const cleaned    = clean(tokens)

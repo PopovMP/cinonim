@@ -43,7 +43,6 @@ const TokenType = {
  * @enum {string}
  */
 const NodeType = {
-	assignment     : 'assignment',
 	binaryOperator : 'binaryOperator',
 	break          : 'break',
 	condition      : 'condition',
@@ -57,9 +56,13 @@ const NodeType = {
 	function       : 'function',
 	functionCall   : 'functionCall',
 	globalConst    : 'globalConst',
+	globalGet      : 'globalGet',
 	globalVar      : 'globalVar',
+	globalSet      : 'globalSet',
 	if             : 'if',
+	localGet       : 'localGet',
 	localVar       : 'localVar',
+	localSet       : 'localSet',
 	loopBody       : 'loopBody',
 	module         : 'module',
 	number         : 'number',
@@ -408,9 +411,9 @@ function parseForm(parentNode, tokens, index)
 		if (varNode.type === NodeType.globalConst)
 			throw new Error('Cannot assign value to a constant: ' + varName)
 
-		const assignmentNode = makeNode(parentNode, NodeType.assignment, varNode.value, varNode.dataType, t0)
-		assignmentNode.nodes.push(varNode)
-		index = parseExpression(assignmentNode, tokens, index+2)
+		const nodeType = varNode.type === NodeType.globalVar ? NodeType.globalSet : NodeType.localSet
+		const varSet = makeNode(parentNode, nodeType, varNode.value, varNode.dataType, t0)
+		index = parseExpression(varSet, tokens, index+2)
 
 		return parseForm(parentNode, tokens, index)
 	}
@@ -544,11 +547,15 @@ function parseExpressionChain(parentNode, tokens, index)
 	// Variable lookup
 	// foo
 	if (t0.type === TokenType.word) {
-		const variableNode = lookupVar(parentNode, t0.value)
-		if (variableNode === null)
+		const varNode = lookupVar(parentNode, t0.value)
+		if (varNode === null)
 			throw new Error('Cannot find a variable: ' + t0.value)
 
-		parentNode.nodes.push(variableNode)
+		const nodeType = varNode.type === NodeType.globalVar || varNode.type === NodeType.globalConst
+			? NodeType.globalGet
+			: NodeType.localGet
+
+		makeNode(parentNode, nodeType, varNode.value, varNode.dataType, t0)
 		return parseExpressionChain(parentNode, tokens, index+1)
 	}
 
