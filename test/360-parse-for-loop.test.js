@@ -24,7 +24,7 @@ describe('parse `for` loop', () => {
 
 	it('for loop', () => {
 		const src = '' +
-`int sum(int max) {
+`int sum(const int max) {
 	int i;
 	int res;
 
@@ -39,9 +39,9 @@ describe('parse `for` loop', () => {
 		const expected = '' +
 `module module
     function sum: i32
-        funcParams sum
-            parameter max: i32
-        funcBody sum: i32
+        funcParams
+            localConst max: i32
+        funcBody: i32
             localVar i: i32
             localVar res: i32
             localSet res: i32
@@ -64,7 +64,7 @@ describe('parse `for` loop', () => {
                         binaryOperator +: i32
                             localGet res: i32
                             localGet i: i32
-            return sum: i32
+            return: i32
                 localGet res: i32`
 		strictEqual(str, expected)
 	})

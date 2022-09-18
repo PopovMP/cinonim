@@ -103,7 +103,7 @@ describe('variable set', () => {
 		const [localSet] = funcBody.nodes
 
 		strictEqual(typeof paramNode,     'object',            'paramNode must be an object')
-		strictEqual(paramNode.type,       NodeType.parameter,  'paramNode.type must be NodeType.parameter')
+		strictEqual(paramNode.type,       NodeType.localVar,  'paramNode.type must be NodeType.localVar')
 		strictEqual(paramNode.value,      'bar',               'paramNode.value must be "bar"')
 		strictEqual(paramNode.dataType,   DataType.f32,        'paramNode.dataType must be ff32')
 

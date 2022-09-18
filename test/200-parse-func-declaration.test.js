@@ -33,7 +33,6 @@ describe('func declaration', () => {
 		const [paramNode, funcBody] = funcDec.nodes
 
 		deepStrictEqual(paramNode.nodes, [])
-		strictEqual(funcBody.value, 'foo')
 		strictEqual(funcBody.dataType, DataType.i32)
 	})
 
@@ -50,7 +49,6 @@ describe('func declaration', () => {
 		strictEqual(param.value, 'a')
 		strictEqual(param.dataType, DataType.i32)
 
-		strictEqual(funcBody.value, 'bar')
 		strictEqual(funcBody.dataType, DataType.f64)
 	})
 
@@ -69,7 +67,6 @@ describe('func declaration', () => {
 		strictEqual(paramB.value, 'b')
 		strictEqual(paramB.dataType, DataType.f64)
 
-		strictEqual(funcBody.value, 'baz')
 		strictEqual(funcBody.dataType, DataType.void)
 	})
 

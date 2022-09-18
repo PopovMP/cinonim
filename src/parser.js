@@ -60,6 +60,7 @@ const NodeType = {
 	globalVar      : 'globalVar',
 	globalSet      : 'globalSet',
 	if             : 'if',
+	localConst     : 'localConst',
 	localGet       : 'localGet',
 	localVar       : 'localVar',
 	localSet       : 'localSet',
@@ -67,7 +68,6 @@ const NodeType = {
 	module         : 'module',
 	number         : 'number',
 	operator       : 'operator',
-	parameter      : 'parameter',
 	return         : 'return',
 	statement      : 'statement',
 	terminal       : 'terminal',
@@ -225,7 +225,10 @@ function parseModule(moduleNode, tokens, index, )
 	}
 
 	// Function declaration
-	// int foo(int bar, int baz) { }
+	// int foo(int bar, const int baz) { }
+	// function
+	//   +-- funcParams
+	//   \-- funcBody
 	if (isDataType(t0) &&
 		t1.type === TokenType.word &&
 		t2.type === TokenType.punctuation && t2.value === '(') {
@@ -233,9 +236,9 @@ function parseModule(moduleNode, tokens, index, )
 		const dataType = dataTypeMap[t0.value]
 		const funcName = t1.value
 
-		const funcNode   = makeNode(moduleNode, NodeType.function, funcName, dataType)
-		const funcParams = makeNode(funcNode, NodeType.funcParams, funcName, DataType.na)
-		const funcBody   = makeNode(funcNode, NodeType.funcBody, funcName, dataType)
+		const funcNode   = makeNode(moduleNode, NodeType.function,   funcName, dataType)
+		const funcParams = makeNode(funcNode,   NodeType.funcParams, '', DataType.na)
+		const funcBody   = makeNode(funcNode,   NodeType.funcBody,   '', dataType)
 
 		index = parseFuncParams(funcParams, tokens, index+3)
 		index = parseFuncBody(funcBody, tokens, index+1)
@@ -259,12 +262,19 @@ function parseFuncParams(funcParams, tokens, index)
 	for (;;index += 1) {
 		const t0 = tokens[index]
 		const t1 = tokens[index+1]
+		const t2 = tokens[index+2]
 
 		if (t0.type === TokenType.punctuation && t0.value === ')') break
 		if (t0.type === TokenType.punctuation && t0.value === ',') continue
-		index += 1 // Eats param name
 
-		makeNode(funcParams, NodeType.parameter, t1.value, dataTypeMap[t0.value], t0)
+		if (t0.type === TokenType.keyword && t0.value === 'const') {
+			makeNode(funcParams, NodeType.localConst, t2.value, dataTypeMap[t1.value], t0)
+			index += 2
+		}
+		else {
+			makeNode(funcParams, NodeType.localVar, t1.value, dataTypeMap[t0.value], t0)
+			index += 1
+		}
 	}
 
 	// eats last ")"
@@ -490,7 +500,7 @@ function parseAssignment(parentNode, tokens, index)
 	const varNode = lookupVar(parentNode, varName)
 	if (varNode === null)
 		throw new Error('Cannot find a variable: ' + varName)
-	if (varNode.type === NodeType.globalConst)
+	if (varNode.type === NodeType.localConst || varNode.type === NodeType.globalConst)
 		throw new Error('Cannot assign value to a constant: ' + varName)
 
 	const nodeType = varNode.type === NodeType.globalVar ? NodeType.globalSet : NodeType.localSet

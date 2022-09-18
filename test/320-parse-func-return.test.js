@@ -40,7 +40,7 @@ describe('function return', () => {
 
 		strictEqual(typeof returnNode,    'object',        'returnNode must be an object')
 		strictEqual(returnNode.type,      NodeType.return, 'returnNode.type must be NodeType.return')
-		strictEqual(returnNode.value,     'foo',           'returnNode.value must be "foo"')
+		strictEqual(returnNode.value,     '',              'returnNode.value must be ""')
 		strictEqual(returnNode.dataType,  DataType.f32,    'returnNode.dataType must be f32')
 
 		strictEqual(typeof numberNode,    'object',        'numberNode must be an object')
@@ -72,7 +72,7 @@ describe('function return', () => {
 
 		strictEqual(typeof returnNode,    'object',        'returnNode must be an object')
 		strictEqual(returnNode.type,      NodeType.return, 'returnNode.type must be NodeType.return')
-		strictEqual(returnNode.value,     'foo',           'returnNode.value must be "foo"')
+		strictEqual(returnNode.value,     '',              'returnNode.value must be ""')
 		strictEqual(returnNode.dataType,  DataType.i32,    'returnNode.dataType must be i32')
 
 		strictEqual(typeof valueNode,    'object',           'valueNode must be an object')
