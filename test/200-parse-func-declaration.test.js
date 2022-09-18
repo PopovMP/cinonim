@@ -5,7 +5,7 @@ const {strictEqual, deepStrictEqual} = require('assert')
 const {tokenize, clean} = require('@popovmp/tokenizer')
 const {describe, it}    = require('@popovmp/mocha-tiny')
 
-const {parse, DataType, NodeType} = require('../src/parser')
+const {parse, DataType, NodeType} = require('../index.js')
 
 /**
  * Parses source code to Nodes

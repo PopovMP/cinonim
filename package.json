@@ -1,6 +1,12 @@
 {
-  "name": "peperoni",
+  "name": "cinonim-parser",
   "version": "0.1.0",
+  "description": "Parser for Cinonim - a C like language.",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:PopovMP/cinonim-parser.git"
+  },
   "dependencies": {
     "@popovmp/tokenizer": "^2.1.0"
   },

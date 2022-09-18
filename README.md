@@ -1,6 +1,8 @@
-# Peperoni - C like language targeting WebAssembly
+# Cinonim Parser
 
-**Peperoni** aims to be directly transpiled to WebAssembly.
+## Cinonim is a C like language targeting WebAssembly
+
+**Cinonim** aims to be compiled to WebAssembly.
 
 ## Data types
   * **int**    -> **i32**
