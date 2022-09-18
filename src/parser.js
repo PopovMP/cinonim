@@ -131,6 +131,15 @@ const operatorPrecedence = {
 
 const binaryOperators = '+ - * / ^ % < <= == >= > != && ||'.split(' ')
 
+/** @type {NodeType[]} */
+const variableTypes = [
+	NodeType.localVar,
+	NodeType.localConst,
+	NodeType.globalVar,
+	NodeType.globalConst,
+	NodeType.function
+]
+
 /**
  * Makes a new node
  *
@@ -497,7 +506,7 @@ function parseAssignment(parentNode, tokens, index)
 
 	const varName = t0.value
 
-	const varNode = lookupVar(parentNode, varName)
+	const varNode = lookup(parentNode, varName)
 	if (varNode === null)
 		throw new Error('Cannot find a variable: ' + varName)
 	if (varNode.type === NodeType.localConst || varNode.type === NodeType.globalConst)
@@ -592,7 +601,7 @@ function parseExpressionChain(parentNode, tokens, index)
 	if (t0.type === TokenType.word &&
 		t1.type === TokenType.punctuation && t1.value === '(') {
 		const funcName = t0.value
-		const funcNode = lookupVar(parentNode, funcName)
+		const funcNode = lookup(parentNode, funcName)
 
 		if (funcNode === null || funcNode.type !== NodeType.function)
 			throw new Error(`[${t0.line+1}, ${t0.column+1}] Cannot find a function: ${funcName}`)
@@ -614,7 +623,7 @@ function parseExpressionChain(parentNode, tokens, index)
 	// Variable lookup
 	// foo
 	if (t0.type === TokenType.word) {
-		const varNode = lookupVar(parentNode, t0.value)
+		const varNode = lookup(parentNode, t0.value)
 		if (varNode === null)
 			throw new Error('Cannot find a variable: ' + t0.value)
 
@@ -759,44 +768,31 @@ function normaliseExpressionChain(moduleNode)
 }
 
 /**
- * Searches a local variable, a function parameter or a global var/const.
+ * Searches a variable within current or the parent nodes.
  *
  * @param {Node|null} parentNode
  * @param {string}    varName
  *
  * @return {Node|null}
  */
-function lookupVar(parentNode, varName)
+function lookup(parentNode, varName)
 {
-	if (parentNode === null) return parentNode
+	if (parentNode === null) return null
 
 	for (const node of parentNode.nodes) {
-		// Local variable
-		if (node.type === NodeType.localVar && node.value === varName)
+		if (variableTypes.includes(node.type) && node.value === varName)
 			return node
 
 		// Function parameter
 		if (node.type === NodeType.funcParams) {
-			for (const par of node.nodes) {
-				if (par.value === varName)
-					return par
+			for (const param of node.nodes) {
+				if (param.value === varName)
+					return param
 			}
 		}
-
-		// Function call
-		if (node.type === NodeType.function && node.value === varName)
-			return node
-
-		// Global variable
-		if (node.type === NodeType.globalVar && node.value === varName)
-			return node
-
-		// Global const
-		if (node.type === NodeType.globalConst && node.value === varName)
-			return node
 	}
 
-	return lookupVar(parentNode.parent, varName)
+	return lookup(parentNode.parent, varName)
 }
 
 /**
