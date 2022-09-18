@@ -22,14 +22,14 @@ Global variables and constants must be initialised with a number.
 ```c
 int    foo = 42;
 long   bar = 66L;
-float  baz = 2.1F;
-double pi  = 3.14;
+float  faz = 2.1F;
+double daz = 3.14;
 ``` 
 
 ## Function declaration
 
 ```c
-int sum(int m, int n) { return m + n; }
+int sum(const int m, const int n) { return m + n; }
 
 void foo(double bar) { ... }
 ```
@@ -50,7 +50,7 @@ void foo() {
 Local and global variable assignment
 
 ```c
-doble foo = 1.1;
+double foo = 1.1;
 
 void func(int bar) {
     int baz;
@@ -76,13 +76,22 @@ if (books) {
 
 ## Loops
 
+The loop's conditions is `i32`. 
+
 ```c
+let i;
+
+for (i = 0; i < max; i = i + 1) {
+    break;
+    continue;
+}
+
 do {
     break;
     continue;
-} while (condition: i32);
+} while (i < max);
 
-while (condition: i32) {
+while (foo) {
     break;
     continue;
 }
@@ -104,15 +113,16 @@ parameter        = numeric-type, alphanum;
 function-body    = local-variable*, statement* ;
 local-variable   = numeric-type, alphanum, ";" ;
 return           = "return", expression?, ";" ;
-statement        = assignment | do | while | if | function-call, ";" | statement ;
-assignment       = alphanum, "=", expression, ";" ;
 function-call    = alphanum, "(", (expression, (",", expression)* )?, ")" ;
+if               = "if", "(", expression, ")", "{", statement*, "}", ("{", "else", statement* "}")? ;
+for              = "for", "(", asignment?, ";", expression?, ";", asignment?, ")", "{", loop-body?, "}" ;
 do               = "do", "{", loop-body?, "}",  "while", "(", expression, ")", ";" ;
 while            = "while", "(", expression, ")", "{", loop-body?, "}" ;
 loop-body        = {statement | break | continue} ;
-break            = "break", numeric)?, ";" ;
-continue         = "continue", numeric)?, ";" ;
-if               = "if", "(", expression, ")", "{", statement*, "}", ("{", "else", statement* "}")? ;
+break            = "break", numeric?, ";" ;
+continue         = "continue", numeric?, ";" ;
+statement        = assignment, ";" | do | while | if | function-call, ";" | statement ;
+assignment       = alphanum, "=", expression ;
 expression       = grouping | numeric | variable-lookup | function-call | unary-operation |
                    binary-operation | expression;
 grouping         = "(", expression, ")" ;
@@ -137,13 +147,14 @@ module
     |
     \-- [*] function {value: funcName, dataType: funcDataType}
                 +-- [1] funcParams
-                |           \-- [*] parameter
+                |           \-- [*] localVar | localConst
                 |
                 \-- [1] funcBody
                             +-- [*] localVar {val: varName, dataType: varDataType}
                             +-- [*] FORM 
 
 FORM =
+    | asignment
     | localSet
     | globalSet
     | do
@@ -169,19 +180,31 @@ funcCall {value: funcName, dataType: funcDataType}
 
 if
     +-- [1] condition: i32
-    |           \-- [1] expression
+    |           \-- [1] expression: i32
     +-- [1] then
     |           \-- [*] FORM
     \-- [?] else
                 \-- [*] FORM
 
+for
+    +-- [1] statement
+    |           \-- [*] localSet | globalSet
+    +-- [1] condition: i32
+    |           \-- [?] expression: i32
+    +-- [1] statement
+    |           \-- [*] asignment
+    +-- [1] loopBody
+                \-- [*] FORM
+
 do
     +-- [1] loopBody
     |           \-- [*] FORM
-    \-- [1] condition
+    \-- [1] condition: i32
+                \-- [1] expression: i32
 
 while
-    +-- [1] condition
+    +-- [1] condition: i32
+    |           \-- [1] expression: i32
     \-- [1] loopBody
                 \-- [*] FORM
 
