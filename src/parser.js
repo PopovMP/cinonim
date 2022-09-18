@@ -79,7 +79,6 @@ const NodeType = {
 	while          : 'while',
 }
 
-
 /**
  * DataType
  * @enum {string}
@@ -187,7 +186,7 @@ function parse(tokens)
 	const index = 0
 	parseModule(moduleNode, tokens, index)
 
-	return normaliseExpressionChain(moduleNode)
+	return resolveExpression(moduleNode)
 }
 
 /**
@@ -539,19 +538,6 @@ function parseExpression(parentNode, tokens, index)
 }
 
 /**
- * Checks if a token ends an expression chain
- *
- * @param {Token[]} tokens
- * @param {number}  index
- * @return {boolean}
- */
-function isExprTerminalToken(tokens, index) {
-	const t0 = tokens[index]
-
-	return t0.type === TokenType.punctuation && [';', ',', ')'].includes(t0.value)
-}
-
-/**
  * Gets the type of the next node
  *
  * @param {Node}     parentNode
@@ -565,7 +551,7 @@ function parseExpressionChain(parentNode, tokens, index)
 	const t0 = tokens[index]
 	const t1 = tokens[index+1]
 
-	if ( isExprTerminalToken(tokens, index) )
+	if (t0.type === TokenType.punctuation && [';', ',', ')'].includes(t0.value) )
 		return index
 
 	// Open parenthesis
@@ -639,22 +625,20 @@ function parseExpressionChain(parentNode, tokens, index)
 }
 
 /**
- * Parses operator precedence
+ * Parses operator precedence in an expression and returns a single node
  *
  * @param {Node} moduleNode
  *
  * @return {Node}
  */
-function normaliseExpressionChain(moduleNode)
+function resolveExpression(moduleNode)
 {
-	loop(moduleNode)
+	fixSimpleOperations(moduleNode)
 
 	return moduleNode
 
-	function loop(node)
+	function fixSimpleOperations(node)
 	{
-		if (node.nodes.length === 0) return
-
 		for (let i = 0; i < node.nodes.length; i++){
 			const expr = node.nodes[i]
 			if (expr.type === NodeType.expression && expr.nodes.length === 1) {
@@ -762,7 +746,7 @@ function normaliseExpressionChain(moduleNode)
 				}
 			}
 
-			loop(node.nodes[i])
+			fixSimpleOperations(node.nodes[i])
 		}
 	}
 }
