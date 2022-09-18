@@ -18,7 +18,8 @@
  * @property {Node[]}     nodes    - list of underlying nodes
  * @property {Token|null} token
  * @property {Node|null}  parent
- */
+ * @property {string[]}   [data]
+  */
 
 /**
  * TokenType
@@ -49,6 +50,7 @@ const NodeType = {
 	continue       : 'continue',
 	do             : 'do',
 	else           : 'else',
+	exportFunc     : 'exportFunc',
 	expression     : 'expression',
 	for            : 'for',
 	funcBody       : 'funcBody',
@@ -67,6 +69,7 @@ const NodeType = {
 	loopBody       : 'loopBody',
 	module         : 'module',
 	number         : 'number',
+	importFunc     : 'importFunc',
 	operator       : 'operator',
 	return         : 'return',
 	statement      : 'statement',
@@ -232,7 +235,22 @@ function parseModule(moduleNode, tokens, index, )
 		return parseModule(moduleNode, tokens, index+6)
 	}
 
-	// Function declaration
+	// Import function
+	// #import-func console log = void logInt(int val)
+	if (t0.type === TokenType.pragma && t0.value === 'import-func') {
+		const dataType = dataTypeMap[tokens[index+4].value]
+		const funcName = tokens[index+5].value
+
+		const importFunc = makeNode(moduleNode, NodeType.importFunc, funcName, dataType, t0)
+		importFunc.data = [t1.value, t2.value]
+		const funcParams = makeNode(importFunc, NodeType.funcParams, '', DataType.na)
+
+		index = parseFuncParams(funcParams, tokens, index+7)
+
+		return parseModule(moduleNode, tokens, index)
+	}
+
+	// Function definition
 	// int foo(int bar, const int baz) { }
 	// function
 	//   +-- funcParams
@@ -252,6 +270,17 @@ function parseModule(moduleNode, tokens, index, )
 		index = parseFuncBody(funcBody, tokens, index+1)
 
 		return parseModule(moduleNode, tokens, index)
+	}
+
+	// Export function
+	// #export-func foo = myFoo
+	if (t0.type === TokenType.pragma && t0.value === 'export-func') {
+		const funcName = tokens[index+3].value
+
+		const exportFunc = makeNode(moduleNode, NodeType.exportFunc, funcName, DataType.na, t0)
+		exportFunc.data = [t1.value]
+
+		return parseModule(moduleNode, tokens, index+4)
 	}
 
 	throw new Error(`[${t0.line+1}, ${t0.column+1}] Unrecognised symbol in module:  ${t0.value}`)
