@@ -69,6 +69,7 @@ const NodeType = {
 	operator       : 'operator',
 	parameter      : 'parameter',
 	return         : 'return',
+	statement      : 'statement',
 	terminal       : 'terminal',
 	then           : 'then',
 	prefixOperator : 'prefixOperator',
@@ -365,7 +366,37 @@ function parseForm(parentNode, tokens, index)
 		return parseForm(parentNode, tokens, index+3)
 	}
 
+	// for (assignment; condition; assignment) { FORM }
+	// for
+	//    +-- statement
+	//    +-- condition
+	//    +-- statement
+	//    \-- loopBody
+	if (t0.type === TokenType.keyword && t0.value === 'for') {
+		const forNode  = makeNode(parentNode, NodeType.for,    '', DataType.na, t0)
+
+		const initNode = makeNode(forNode, NodeType.statement, '', DataType.na, t2)
+		if (t2.type === TokenType.word)
+			index = parseAssignment(initNode, tokens, index+2)
+
+		const condition = makeNode(forNode, NodeType.condition, '', DataType.i32, tokens[index])
+		if (tokens[index].value !== ';')
+			index = parseExpression(condition, tokens, index)
+
+		const increment = makeNode(forNode, NodeType.statement, '', DataType.na,  tokens[index])
+		if (tokens[index].value !== ')')
+			index = parseAssignment(increment, tokens, index)
+
+		const loopBody = makeNode(forNode, NodeType.loopBody, '', DataType.na, tokens[index])
+		index = parseForm(loopBody, tokens, index+1)
+
+		return parseForm(parentNode, tokens, index)
+	}
+
 	// do { FORM } while (condition);
+	// do
+	//    +-- loopBody
+	//    \-- condition
 	if (t0.type === TokenType.keyword && t0.value === 'do' &&
 		t1.type === TokenType.punctuation && t1.value === '{') {
 
@@ -382,6 +413,9 @@ function parseForm(parentNode, tokens, index)
 	}
 
 	// while (condition) { FORM }
+	// while
+	//    +-- condition
+	//    \-- loopBody
 	if (t0.type === TokenType.keyword && t0.value === 'while' &&
 		t1.type === TokenType.punctuation && t1.value === '(') {
 
@@ -390,34 +424,19 @@ function parseForm(parentNode, tokens, index)
 		const condition = makeNode(whileNode, NodeType.condition, '', DataType.i32, t2)
 		index = parseExpression(condition, tokens, index+2)
 
-		index += 2
+		index += 1
 		const loopBody = makeNode(whileNode, NodeType.loopBody, '', DataType.na, tokens[index])
-		index = parseExpression(loopBody, tokens, index)
-
-		return parseForm(parentNode, tokens, index)
-	}
-
-	// Assignment
-	// foo = expression;
-	if (t0.type === TokenType.word &&
-		t1.type === TokenType.operator && t1.value === '=') {
-		const varName = t0.value
-
-		const varNode = lookupVar(parentNode, varName)
-		if (varNode === null)
-			throw new Error('Cannot find a variable: ' + varName)
-		if (varNode.type === NodeType.globalConst)
-			throw new Error('Cannot assign value to a constant: ' + varName)
-
-		const nodeType = varNode.type === NodeType.globalVar ? NodeType.globalSet : NodeType.localSet
-		const varSet = makeNode(parentNode, nodeType, varNode.value, varNode.dataType, t0)
-		index = parseExpression(varSet, tokens, index+2)
+		index = parseForm(loopBody, tokens, index)
 
 		return parseForm(parentNode, tokens, index)
 	}
 
 	// if (condition) { FORM }
 	// if (condition) { FORM } else { FORM }
+	// if
+	//    +-- condition
+	//    +-- then
+	//    \-- else
 	if (t0.type === TokenType.keyword && t0.value === 'if' &&
 		t1.type === TokenType.punctuation && t1.value === '(') {
 
@@ -426,8 +445,8 @@ function parseForm(parentNode, tokens, index)
 		const condition = makeNode(ifNode, NodeType.condition, '', DataType.i32, t2)
 		index = parseExpression(condition, tokens, index+2)
 
-		const then = makeNode(ifNode, NodeType.then, '', DataType.na, tokens[index])
-		index = parseForm(then, tokens, index+1)
+		const thenNode = makeNode(ifNode, NodeType.then, '', DataType.na, tokens[index])
+		index = parseForm(thenNode, tokens, index+1)
 
 		if (tokens[index].type === TokenType.keyword && tokens[index].value === 'else') {
 			const elseNode = makeNode(ifNode, NodeType.else, '', DataType.na, tokens[index])
@@ -437,7 +456,47 @@ function parseForm(parentNode, tokens, index)
 		return parseForm(parentNode, tokens, index)
 	}
 
-	throw new Error(`[${t0.line+1}, ${t0.column + 1}] Unrecognised symbol in ${parentNode.type}:  ${t0.value}`)
+	// Assignment
+	// foo = expression;
+	if (t0.type === TokenType.word &&
+		t1.type === TokenType.operator && t1.value === '=') {
+		index = parseAssignment(parentNode, tokens, index)
+
+		return parseForm(parentNode, tokens, index)
+	}
+
+	throw new Error(`[${t0.line+1}, ${t0.column+1}] Unrecognised symbol in ${parentNode.type}:  ${t0.value}`)
+}
+
+/**
+ * Parses a variable assignment
+ *
+ * foo = expression; // Statement in FORM
+ * foo = expression) // increment part of `for` loop
+ * The terminal punctuation is determined (and consumed) by `parseExpression`
+ *
+ * @param {Node}    parentNode
+ * @param {Token[]} tokens
+ * @param {number}  index
+ *
+ * @return {number} - the index of the terminal punctuation
+ */
+function parseAssignment(parentNode, tokens, index)
+{
+	const t0 = tokens[index]
+
+	const varName = t0.value
+
+	const varNode = lookupVar(parentNode, varName)
+	if (varNode === null)
+		throw new Error('Cannot find a variable: ' + varName)
+	if (varNode.type === NodeType.globalConst)
+		throw new Error('Cannot assign value to a constant: ' + varName)
+
+	const nodeType = varNode.type === NodeType.globalVar ? NodeType.globalSet : NodeType.localSet
+	const varSet   = makeNode(parentNode, nodeType, varNode.value, varNode.dataType, t0)
+
+	return parseExpression(varSet, tokens, index+2)
 }
 
 /**
@@ -557,7 +616,7 @@ function parseExpressionChain(parentNode, tokens, index)
 		return parseExpressionChain(parentNode, tokens, index+1)
 	}
 
-	throw new Error(`[${t0.line+1}, ${t0.column + 1}] Unrecognised expression symbol in ${parentNode.type}:  ${t0.value}`)
+	throw new Error(`[${t0.line+1}, ${t0.column+1}] Unrecognised expression symbol in ${parentNode.type}:  ${t0.value}`)
 }
 
 /**
