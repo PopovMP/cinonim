@@ -6,6 +6,7 @@ const {tokenize, clean} = require('@popovmp/tokenizer')
 const {describe, it}    = require('@popovmp/mocha-tiny')
 
 const {parse, DataType} = require('../index.js')
+const {NodeType}        = require('../index')
 
 /**
  * Parses source code to Nodes
@@ -43,6 +44,23 @@ describe('local declaration', () => {
 		strictEqual(varA.dataType, DataType.i32)
 		strictEqual(varB.value, 'baz')
 		strictEqual(varB.dataType, DataType.f64)
+	})
+
+	it('multiple declarations with comma', () => {
+		const src = `void foo() { long varA, varB, varC; }`
+		const funcNode = parseModule(src)[0]
+		const [_, funcBody] = funcNode.nodes
+		const [varA, varB, varC] = funcBody.nodes
+
+		strictEqual(varA.type,     NodeType.localVar)
+		strictEqual(varA.value,    'varA')
+		strictEqual(varA.dataType, DataType.i64)
+		strictEqual(varB.type,     NodeType.localVar)
+		strictEqual(varB.value,    'varB')
+		strictEqual(varB.dataType, DataType.i64)
+		strictEqual(varC.type,     NodeType.localVar)
+		strictEqual(varC.value,    'varC')
+		strictEqual(varC.dataType, DataType.i64)
 	})
 
 })

@@ -327,11 +327,16 @@ function parseFuncBody(funcBody, tokens, index)
 	// Local declaration
 	// int foo;
 	if (isDataType(t0) &&
-		t1.type === TokenType.word &&
-		t2.type === TokenType.punctuation && t2.value === ';') {
-		makeNode(funcBody, NodeType.localVar, t1.value, dataTypeMap[t0.value], t0)
+		t1.type === TokenType.word) {
 
-		return parseFuncBody(funcBody, tokens, index+3)
+		do {
+			index += 1
+			const tk = tokens[index]
+			makeNode(funcBody, NodeType.localVar, tk.value, dataTypeMap[t0.value], tk)
+			index += 1
+		} while (tokens[index].value === ',')
+
+		return parseFuncBody(funcBody, tokens, index+1)
 	}
 
 	return parseForm(funcBody, tokens, index)
