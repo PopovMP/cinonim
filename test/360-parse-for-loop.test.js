@@ -51,19 +51,22 @@ describe('parse `for` loop', () => {
                     localSet i: i32
                         number 0: i32
                 condition: i32
-                    binaryOperator <: i32
+                    expression: i32
                         localGet i: i32
                         localGet max: i32
+                        operator <: i32
                 statement
                     localSet i: i32
-                        binaryOperator +: i32
+                        expression: i32
                             localGet i: i32
                             number 1: i32
+                            operator +: i32
                 loopBody
                     localSet res: i32
-                        binaryOperator +: i32
+                        expression: i32
                             localGet res: i32
                             localGet i: i32
+                            operator +: i32
             return: i32
                 localGet res: i32`
 		strictEqual(str, expected)

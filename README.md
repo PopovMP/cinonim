@@ -125,14 +125,10 @@ break            = "break", numeric?, ";" ;
 continue         = "continue", numeric?, ";" ;
 statement        = assignment, ";" | do | while | if | function-call, ";" | statement ;
 assignment       = alphanum, "=", expression ;
-expression       = grouping | numeric | variable-lookup | function-call | unary-operation |
-                   binary-operation | expression;
+expression       = {grouping | numeric | variable-lookup | function-call | operato | expression};
 grouping         = "(", expression, ")" ;
 variable-lookup  = alphanum	;
-binary-operation = expression, binary-operator, expression;
-unary-operation  = prefix-operator, (numeric | variable-lookup | function-call | grouping) ;
-prefix-operator  = "-" | "!";
-binary-operator  =  "+"  | "-" | "*" | "/" | "%" | "||" | "&&" | "==" | "" | "" | "=" | "=" | "!=" ;
+operator         =  "+" | "-" | "*" | "/" | "%" | "||" | "&&" | "==" | "!="  | ">" | "<" | "<=" | ">=" | "!";
 keyword          = "break" | "continue" | "const"  | "do"   | "double" | "else" | "float" | "if" | "int" |
                    "long"  | "loop"     | "return" | "void" | "while";
 ```
@@ -215,13 +211,6 @@ return {value: funcName, dataType: funcDataType}
 
 expression
     | [1] number
-    | [1] prefixOperator
-    |           \-- [1] expression
-    | [1] postfixOperator
-    |           \-- [1] expression
-    | [1] binaryOperator
-    |           +-- [1] expression
-    |           \-- [1] expression
     | [1] expression
     | [1] funcCall
     |           \-- [*] expression

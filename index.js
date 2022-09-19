@@ -44,42 +44,37 @@ const TokenType = {
  * @enum {string}
  */
 const NodeType = {
-	binaryOperator : 'binaryOperator',
-	break          : 'break',
-	condition      : 'condition',
-	continue       : 'continue',
-	do             : 'do',
-	else           : 'else',
-	exportFunc     : 'exportFunc',
-	expression     : 'expression',
-	for            : 'for',
-	funcBody       : 'funcBody',
-	funcParams     : 'funcParams',
-	function       : 'function',
-	functionCall   : 'functionCall',
-	globalConst    : 'globalConst',
-	globalGet      : 'globalGet',
-	globalVar      : 'globalVar',
-	globalSet      : 'globalSet',
-	if             : 'if',
-	localConst     : 'localConst',
-	localGet       : 'localGet',
-	localVar       : 'localVar',
-	localSet       : 'localSet',
-	loopBody       : 'loopBody',
-	module         : 'module',
-	number         : 'number',
-	importFunc     : 'importFunc',
-	operator       : 'operator',
-	return         : 'return',
-	statement      : 'statement',
-	terminal       : 'terminal',
-	then           : 'then',
-	prefixOperator : 'prefixOperator',
-	postfixOperator: 'postfixOperator',
-	variable       : 'variable',
-	variableLookup : 'variableLookup',
-	while          : 'while',
+	break        : 'break',
+	condition    : 'condition',
+	continue     : 'continue',
+	do           : 'do',
+	else         : 'else',
+	exportFunc   : 'exportFunc',
+	expression   : 'expression',
+	for          : 'for',
+	funcBody     : 'funcBody',
+	funcParams   : 'funcParams',
+	function     : 'function',
+	functionCall : 'functionCall',
+	globalConst  : 'globalConst',
+	globalGet    : 'globalGet',
+	globalVar    : 'globalVar',
+	globalSet    : 'globalSet',
+	if           : 'if',
+	localConst   : 'localConst',
+	localGet     : 'localGet',
+	localVar     : 'localVar',
+	localSet     : 'localSet',
+	loopBody     : 'loopBody',
+	module       : 'module',
+	number       : 'number',
+	importFunc   : 'importFunc',
+	operator     : 'operator',
+	return       : 'return',
+	statement    : 'statement',
+	then         : 'then',
+	variable     : 'variable',
+	while        : 'while',
 }
 
 /**
@@ -107,12 +102,6 @@ const dataTypeMap = {
 	void   : DataType.void,
 }
 
-const suffixDataType = {
-	L : DataType.i64,
-	F : DataType.f32,
-	D : DataType.f64,
-}
-
 // noinspection JSUnusedLocalSymbols
 const operatorPrecedence = {
 	'('  : 18, ')'  : 18,
@@ -130,8 +119,6 @@ const operatorPrecedence = {
 	'?:' : 2, // Ternary operator
 	','  : 1, // Comma sequence
 }
-
-const binaryOperators = '+ - * / ^ % < <= == >= > != && ||'.split(' ')
 
 /** @type {NodeType[]} */
 const variableTypes = [
@@ -189,7 +176,7 @@ function parse(tokens)
 	const index = 0
 	parseModule(moduleNode, tokens, index)
 
-	return resolveExpression(moduleNode)
+	return moduleNode
 }
 
 /**
@@ -559,11 +546,15 @@ function parseAssignment(parentNode, tokens, index)
 function parseExpression(parentNode, tokens, index)
 {
 	const t0 = tokens[index]
-	const exprNode = parentNode.type === NodeType.expression && parentNode.value === '('
+	const exprNode = parentNode.type === NodeType.expression
 				? parentNode
 				: makeNode(parentNode, NodeType.expression, '', parentNode.dataType, t0)
 
-	return parseExpressionChain(exprNode, tokens, index) + 1
+	index = parseExpressionChain(exprNode, tokens, index)
+
+	loopPrecedence(parentNode)
+
+	return index
 }
 
 /**
@@ -581,11 +572,11 @@ function parseExpressionChain(parentNode, tokens, index)
 	const t1 = tokens[index+1]
 
 	if (t0.type === TokenType.punctuation && [';', ',', ')'].includes(t0.value) )
-		return index
+		return index+1
 
 	// Open parenthesis
 	if (t0.type === TokenType.punctuation && t0.value === '(') {
-		const openParen = makeNode(parentNode, NodeType.expression, '(', parentNode.dataType, t0)
+		const openParen = makeNode(parentNode, NodeType.expression, '', parentNode.dataType, t0)
 		index = parseExpression(openParen, tokens, index+1)
 		return parseExpressionChain(parentNode, tokens, index)
 	}
@@ -595,12 +586,38 @@ function parseExpressionChain(parentNode, tokens, index)
 	if (t0.type === TokenType.number) {
 		const sfxMatch = t0.value.match(/([LFD])$/)
 		const suffix   = sfxMatch ? sfxMatch[1] : ''
-		const dataType = suffix === '' ? parentNode.dataType : suffixDataType[suffix]
-		const value    = dataType === DataType.i32 || dataType === DataType.i64
-			? parseInt(t0.value)
-			: parseFloat(t0.value)
+		const decPoint = t0.value.includes('.')
 
-		makeNode(parentNode, NodeType.number, value, dataType, t0)
+		switch (suffix) {
+			case 'L': {
+				if (decPoint)
+					throw new Error(`[${t0.line+1}, ${t0.column+1}] Wrong number suffix L in:  ${t0.value}`)
+				makeNode(parentNode, NodeType.number, parseInt(t0.value), DataType.i64, t0)
+				break
+			}
+			case 'F': {
+				if (t0.value.length > 8)
+					throw new Error(`[${t0.line+1}, ${t0.column+1}] Losing precision in:  ${t0.value}`)
+				makeNode(parentNode, NodeType.number, parseFloat(t0.value), DataType.f32, t0)
+				break
+			}
+			case 'D': {
+				makeNode(parentNode, NodeType.number, parseFloat(t0.value), DataType.f64, t0)
+				break
+			}
+			default: {
+				if (decPoint) {
+					if (t0.value.length > 8 || parentNode.dataType === DataType.f64)
+						makeNode(parentNode, NodeType.number, parseFloat(t0.value), DataType.f64, t0)
+					else
+						makeNode(parentNode, NodeType.number, parseFloat(t0.value), DataType.f32, t0)
+				}
+				else {
+					makeNode(parentNode, NodeType.number, parseInt(t0.value), DataType.i32, t0)
+				}
+			}
+		}
+
 		return parseExpressionChain(parentNode, tokens, index+1)
 	}
 
@@ -654,133 +671,6 @@ function parseExpressionChain(parentNode, tokens, index)
 }
 
 /**
- * Parses operator precedence in an expression and returns a single node
- *
- * @param {Node} moduleNode
- *
- * @return {Node}
- */
-function resolveExpression(moduleNode)
-{
-	fixSimpleOperations(moduleNode)
-
-	return moduleNode
-
-	function fixSimpleOperations(node)
-	{
-		for (let i = 0; i < node.nodes.length; i++){
-			const expr = node.nodes[i]
-			if (expr.type === NodeType.expression && expr.nodes.length === 1) {
-				const ch = expr.nodes[0]
-				node.nodes[i] = {
-					parent  : node,
-					type    : ch.type,
-					dataType: ch.dataType,
-					value   : ch.value,
-					nodes   : ch.nodes,
-					token   : ch.token,
-				}
-			}
-			else if (expr.type === NodeType.expression && expr.nodes.length === 2) {
-				const ch0 = expr.nodes[0]
-				const ch1 = expr.nodes[1]
-
-				if (ch0.type === NodeType.operator &&
-					(ch0.value === '-' || ch0.value === '!' || ch0.value === '++' || ch0.value === '--')) {
-					const prefixOperator = {
-						parent  : node,
-						type    : NodeType.prefixOperator,
-						dataType: ch0.dataType,
-						value   : ch0.value,
-						nodes   : [],
-						token   : ch0.token,
-					}
-
-					const arg = {
-						parent  : prefixOperator,
-						type    : ch1.type,
-						dataType: ch1.dataType,
-						value   : ch1.value,
-						nodes   : ch1.nodes,
-						token   : ch1.token,
-					}
-
-					prefixOperator.nodes = [arg]
-					node.nodes[i] = prefixOperator
-				}
-			}
-			else if (expr.type === NodeType.expression && expr.nodes.length === 2) {
-				const ch0 = expr.nodes[0]
-				const ch1 = expr.nodes[1]
-
-				if (ch1.type === NodeType.operator &&
-					(ch1.value === '++' || ch1.value === '--')) {
-					const postfixOperator = {
-						parent  : node,
-						type    : NodeType.postfixOperator,
-						dataType: ch1.dataType,
-						value   : ch1.value,
-						nodes   : [],
-						token   : ch1.token,
-					}
-
-					const arg = {
-						parent  : postfixOperator,
-						type    : ch0.type,
-						dataType: ch0.dataType,
-						value   : ch0.value,
-						nodes   : ch0.nodes,
-						token   : ch0.token,
-					}
-
-					postfixOperator.nodes = [arg]
-					node.nodes[i] = postfixOperator
-				}
-			}
-			else if (expr.type === NodeType.expression && expr.nodes.length === 3) {
-				const ch0 = expr.nodes[0]
-				const ch1 = expr.nodes[1]
-				const ch2 = expr.nodes[2]
-
-				if (ch1.type === NodeType.operator && binaryOperators.includes(ch1.value)) {
-					const binaryOperator = {
-						parent  : node,
-						type    : NodeType.binaryOperator,
-						dataType: ch1.dataType,
-						value   : ch1.value,
-						nodes   : [],
-						token   : ch1.token,
-					}
-
-					const argA = {
-						parent  : binaryOperator,
-						type    : ch0.type,
-						dataType: ch0.dataType,
-						value   : ch0.value,
-						nodes   : ch0.nodes,
-						token   : ch0.token,
-					}
-
-					const argB = {
-						parent  : binaryOperator,
-						type    : ch2.type,
-						dataType: ch2.dataType,
-						value   : ch2.value,
-						nodes   : ch2.nodes,
-						token   : ch2.token,
-					}
-
-					binaryOperator.nodes = [argA, argB]
-					node.nodes[i] = binaryOperator
-				}
-			}
-
-			fixSimpleOperations(node.nodes[i])
-		}
-	}
-}
-
-/**
  * Searches a variable within current or the parent nodes.
  *
  * @param {Node|null} parentNode
@@ -806,6 +696,100 @@ function lookup(parentNode, varName)
 	}
 
 	return lookup(parentNode.parent, varName)
+}
+
+function loopPrecedence(node)
+{
+	for (let i = 0; i < node.nodes.length; i++) {
+		const expr = node.nodes[i]
+		if (expr.type === NodeType.expression) {
+			const exprChain = solveOperatorPrecedence(expr)
+			if (exprChain.length === 1) {
+				const expVal = exprChain[0]
+				expVal.parent = node
+				node.nodes[i] = expVal
+			}
+			else {
+				expr.nodes = exprChain
+			}
+		}
+
+		loopPrecedence(node.nodes[i])
+	}
+}
+
+/**
+ * @param {Node} exprNode
+ *
+ * @return {Node[]}
+ */
+function solveOperatorPrecedence(exprNode)
+{
+	const operatorStack = []
+	const exprChain     = []
+
+	for (let i = 0; i < exprNode.nodes.length; i += 1) {
+		const curr = exprNode.nodes[i]
+		if ( isOperandNode(curr) ) {
+			exprChain.push(curr)
+		}
+		else {
+			if (operatorStack.length === 0)	{
+				operatorStack.push(curr)
+			}
+			else {
+				while (operatorStack.length > 0 && !isHigherPrecedence(curr, operatorStack[operatorStack.length-1]) ) {
+					exprChain.push( operatorStack.pop() )
+				}
+				operatorStack.push(curr)
+			}
+		}
+	}
+
+	while (operatorStack.length > 0) {
+		exprChain.push( operatorStack.pop() )
+	}
+
+	return exprChain
+}
+
+/**
+ * Gets is a node operand
+ *
+ * @param {Node} node
+ *
+ * @return {boolean}
+ */
+function isOperandNode(node)
+{
+	return [
+		NodeType.number,
+		NodeType.expression,
+		NodeType.functionCall,
+		NodeType.localGet,
+		NodeType.globalGet,
+	].includes(node.type)
+}
+
+/**
+ * @param {Node} opA
+ * @param {Node} opB
+ *
+ * @return {boolean}
+ */
+function isHigherPrecedence(opA, opB)
+{
+	if (opA.type !== NodeType.operator || !operatorPrecedence.hasOwnProperty(opA.value)) {
+		const t0 = opA.token
+		throw new Error(`[${t0.line+1}, ${t0.column+1}] Unrecognised operator in ${opA.parent.value}:  ${opA.value}`)
+	}
+
+	if (opB.type !== NodeType.operator || !operatorPrecedence.hasOwnProperty(opB.value)) {
+		const t0 = opB.token
+		throw new Error(`[${t0.line+1}, ${t0.column+1}] Unrecognised operator in ${opB.parent.value}:  ${opB.value}`)
+	}
+
+	return operatorPrecedence[opA.value] > operatorPrecedence[opB.value]
 }
 
 /**
