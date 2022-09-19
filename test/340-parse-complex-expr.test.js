@@ -34,8 +34,8 @@ describe('parse complex expression', () => {
 		const expected = '' +
 `module module
     function foo: void
-        funcParams
-        funcBody: void
+        funcParams foo
+        funcBody foo: void
             localVar out: i32
             localSet out: i32
                 expression: i32

@@ -250,8 +250,8 @@ function parseModule(moduleNode, tokens, index, )
 		const funcName = t1.value
 
 		const funcNode   = makeNode(moduleNode, NodeType.function,   funcName, dataType)
-		const funcParams = makeNode(funcNode,   NodeType.funcParams, '', DataType.na)
-		const funcBody   = makeNode(funcNode,   NodeType.funcBody,   '', dataType)
+		const funcParams = makeNode(funcNode,   NodeType.funcParams, funcName, DataType.na)
+		const funcBody   = makeNode(funcNode,   NodeType.funcBody,   funcName, dataType)
 
 		index = parseFuncParams(funcParams, tokens, index+3)
 		index = parseFuncBody(funcBody, tokens, index+1)

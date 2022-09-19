@@ -39,9 +39,9 @@ describe('parse `for` loop', () => {
 		const expected = '' +
 `module module
     function sum: i32
-        funcParams
+        funcParams sum
             localConst max: i32
-        funcBody: i32
+        funcBody sum: i32
             localVar i: i32
             localVar res: i32
             localSet res: i32
@@ -67,7 +67,7 @@ describe('parse `for` loop', () => {
                             localGet res: i32
                             localGet i: i32
                             operator +: i32
-            return: i32
+            return sum: i32
                 localGet res: i32`
 		strictEqual(str, expected)
 	})

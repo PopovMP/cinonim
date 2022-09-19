@@ -23,9 +23,9 @@ const src = '' +
 const expected = '' +
 `module module
     function foo: i64
-        funcParams
+        funcParams foo
             localVar n: i32
-        funcBody: i64
+        funcBody foo: i64
             localVar res: i64
             do
                 loopBody
@@ -41,7 +41,7 @@ const expected = '' +
                     continue 0
                 condition: i32
                     localGet n: i32
-            return: i64
+            return foo: i64
                 localGet res: i64`
 
 const tokens     = tokenize(src)

@@ -36,8 +36,8 @@ describe('parse expression chain', () => {
 		const expected = '' +
 `module module
     function foo: void
-        funcParams
-        funcBody: void
+        funcParams foo
+        funcBody foo: void
             localVar out: f64
             localSet out: f64
                 expression: f64
