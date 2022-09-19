@@ -48,7 +48,7 @@ describe('global', () => {
 		strictEqual(globalVar.value, 'foo')
 		strictEqual(globalVar.dataType, DataType.i64)
 		strictEqual(numNode.value, 42)
-		strictEqual(numNode.dataType, DataType.i32)
+		strictEqual(numNode.dataType, DataType.i64)
 	})
 
 	it('float foo = 3.14;', () => {

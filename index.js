@@ -597,28 +597,40 @@ function parseExpressionChain(parentNode, tokens, index)
 			case 'L': {
 				if (decPoint)
 					throw new Error(`[${t0.line+1}, ${t0.column+1}] Wrong number suffix L in:  ${t0.value}`)
+				if (parentNode.dataType !== DataType.i64)
+					throw new Error(`[${t0.line+1}, ${t0.column+1}] Wrong data type. Expected ${parentNode.dataType}, but got i64: ${t0.value}`)
 				makeNode(parentNode, NodeType.number, parseInt(t0.value), DataType.i64, t0)
 				break
 			}
 			case 'F': {
 				if (t0.value.length > 8)
 					throw new Error(`[${t0.line+1}, ${t0.column+1}] Losing precision in:  ${t0.value}`)
+				if (parentNode.dataType !== DataType.f32)
+					throw new Error(`[${t0.line+1}, ${t0.column+1}] Wrong data type. Expected ${parentNode.dataType}, but got f32: ${t0.value}`)
 				makeNode(parentNode, NodeType.number, parseFloat(t0.value), DataType.f32, t0)
 				break
 			}
 			case 'D': {
+				if (parentNode.dataType !== DataType.f64)
+					throw new Error(`[${t0.line+1}, ${t0.column+1}] Wrong data type. Expected ${parentNode.dataType}, but got f64: ${t0.value}`)
 				makeNode(parentNode, NodeType.number, parseFloat(t0.value), DataType.f64, t0)
 				break
 			}
 			default: {
 				if (decPoint) {
-					if (t0.value.length > 8 || parentNode.dataType === DataType.f64)
+					if (t0.value.length > 8 || parentNode.dataType === DataType.f64) {
+						if (parentNode.dataType !== DataType.f64)
+							throw new Error(`[${t0.line+1}, ${t0.column+1}] Wrong data type. Expected ${parentNode.dataType}, but got f64: ${t0.value}`)
 						makeNode(parentNode, NodeType.number, parseFloat(t0.value), DataType.f64, t0)
-					else
+					}
+					else {
+						if (parentNode.dataType !== DataType.f32)
+							throw new Error(`[${t0.line+1}, ${t0.column+1}] Wrong data type. Expected ${parentNode.dataType}, but got f32: ${t0.value}`)
 						makeNode(parentNode, NodeType.number, parseFloat(t0.value), DataType.f32, t0)
+					}
 				}
 				else {
-					makeNode(parentNode, NodeType.number, parseInt(t0.value), DataType.i32, t0)
+					makeNode(parentNode, NodeType.number, parseInt(t0.value), parentNode.dataType, t0)
 				}
 			}
 		}

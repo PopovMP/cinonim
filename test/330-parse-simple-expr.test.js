@@ -25,7 +25,7 @@ describe('parse expression chain', () => {
 	it('expr two', () => {
 		const src = '' +
 `void foo() {
-	double out;
+	int out;
 	out = 1+2;
 	out = 1+(2+3);
 	out = (1+2)*(3+4);
@@ -38,43 +38,43 @@ describe('parse expression chain', () => {
     function foo: void
         funcParams foo
         funcBody foo: void
-            localVar out: f64
-            localSet out: f64
-                expression: f64
+            localVar out: i32
+            localSet out: i32
+                expression: i32
                     number 1: i32
                     number 2: i32
-                    operator +: f64
-            localSet out: f64
-                expression: f64
+                    operator +: i32
+            localSet out: i32
+                expression: i32
                     number 1: i32
-                    expression: f64
+                    expression: i32
                         number 2: i32
                         number 3: i32
-                        operator +: f64
-                    operator +: f64
-            localSet out: f64
-                expression: f64
-                    expression: f64
+                        operator +: i32
+                    operator +: i32
+            localSet out: i32
+                expression: i32
+                    expression: i32
                         number 1: i32
                         number 2: i32
-                        operator +: f64
-                    expression: f64
+                        operator +: i32
+                    expression: i32
                         number 3: i32
                         number 4: i32
-                        operator +: f64
-                    operator *: f64
-            localSet out: f64
-                expression: f64
-                    expression: f64
+                        operator +: i32
+                    operator *: i32
+            localSet out: i32
+                expression: i32
+                    expression: i32
                         number 1: i32
                         number 2: i32
-                        operator +: f64
+                        operator +: i32
                     number 3: i32
-                    operator *: f64
-            localSet out: f64
-                expression: f64
-                    localGet out: f64
-                    operator -: f64`
+                    operator *: i32
+            localSet out: i32
+                expression: i32
+                    localGet out: i32
+                    operator -: i32`
 		strictEqual(str, expected)
 	})
 })
