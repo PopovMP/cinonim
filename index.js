@@ -438,7 +438,7 @@ function parseForm(parentNode, tokens, index)
 		else if ( isNumber(t1) && isPunct(t2, ';') )
 			makeNode(parentNode, command, t1.value, DataType.na, t0)
 		else
-			throw new Error(`[${t1.line+1}, ${t1.column+1}] Wrong symbol after ${t0.value}: ${t1.value}`)
+			throw new Error(`[${t1.line+1}, ${t1.column+1}] Wrong symbol in "${t0.value}", Expected ";" or an index but got: ${t1.value}`)
 
 		return parseForm(parentNode, tokens, index+2)
 	}
@@ -449,19 +449,29 @@ function parseForm(parentNode, tokens, index)
 	//    +-- condition
 	//    +-- statement
 	//    \-- loopBody
-	if (t0.type === TokenType.keyword && t0.value === 'for') {
-		const forNode  = makeNode(parentNode, NodeType.for,    '', DataType.na, t0)
+	if ( isKeyword(t0, 'for') ) {
+		const forNode  = makeNode(parentNode, NodeType.for,       '', DataType.na, t0)
+		const initNode = makeNode(forNode,    NodeType.statement, '', DataType.na, t2)
 
-		const initNode = makeNode(forNode, NodeType.statement, '', DataType.na, t2)
-		if (t2.type === TokenType.word)
+		if ( isPunct(t2, ';') )
+			index += 3
+		else
 			index = parseAssignment(initNode, tokens, index+2)
 
-		const condition = makeNode(forNode, NodeType.condition, '', DataType.i32, tokens[index])
-		if (tokens[index].value !== ';')
+		const tk = tokens[index]
+		const condition = makeNode(forNode, NodeType.condition, '', DataType.i32, tk)
+
+		if ( isPunct(tk, ';') )
+			index += 1
+		else
 			index = parseExpression(condition, tokens, index)
 
-		const increment = makeNode(forNode, NodeType.statement, '', DataType.na,  tokens[index])
-		if (tokens[index].value !== ')')
+		const tk1 = tokens[index]
+		const increment = makeNode(forNode, NodeType.statement, '', DataType.na,  tk1)
+
+		if ( isPunct(tk1, ')') )
+			index += 1
+		else
 			index = parseAssignment(increment, tokens, index)
 
 		const loopBody = makeNode(forNode, NodeType.loopBody, '', DataType.na, tokens[index])
@@ -474,13 +484,22 @@ function parseForm(parentNode, tokens, index)
 	// do
 	//    +-- loopBody
 	//    \-- condition
-	if (t0.type === TokenType.keyword && t0.value === 'do' &&
-		t1.type === TokenType.punctuation && t1.value === '{') {
+	if ( isKeyword(t0, 'do') ) {
+		if (! isPunct(t1, '{') )
+			throw new Error(`[${t1.line+1}, ${t1.column+1}] Wrong symbol in "do". Expected "{" but got: ${t1.value}`)
 
-		const doNode = makeNode(parentNode, NodeType.do, '', DataType.na, t0)
+		const doNode   = makeNode(parentNode, NodeType.do,       '', DataType.na, t0)
+		const loopBody = makeNode(doNode,     NodeType.loopBody, '', DataType.na, t2)
 
-		const loopBody = makeNode(doNode, NodeType.loopBody, '', DataType.na, t2)
 		index = parseForm(loopBody, tokens, index+2)
+
+		const tk0 = tokens[index]
+		if (! isKeyword(tk0, 'while') )
+			throw new Error(`[${tk0.line+1}, ${tk0.column+1}] Wrong symbol in "do". Expected "while" but got: ${tk0.value}`)
+
+		const tk1 = tokens[index+1]
+		if (! isPunct(tk1, '(') )
+			throw new Error(`[${tk1.line+1}, ${tk1.column+1}] Wrong symbol in "do". Expected "(" but got: ${tk1.value}`)
 
 		index += 2
 		const condition = makeNode(doNode, NodeType.condition, '', DataType.i32, tokens[index])
@@ -493,17 +512,22 @@ function parseForm(parentNode, tokens, index)
 	// while
 	//    +-- condition
 	//    \-- loopBody
-	if (t0.type === TokenType.keyword && t0.value === 'while' &&
-		t1.type === TokenType.punctuation && t1.value === '(') {
+	if ( isKeyword(t0, 'while') ) {
+		if (! isPunct(t1, '(') )
+			throw new Error(`[${t1.line+1}, ${t1.column+1}] Wrong symbol in "while". Expected "(" but got: ${t1.value}`)
 
-		const whileNode = makeNode(parentNode, NodeType.while, '', DataType.na, t0)
+		const whileNode = makeNode(parentNode, NodeType.while,     '', DataType.na,  t0)
+		const condition = makeNode(whileNode,  NodeType.condition, '', DataType.i32, t2)
 
-		const condition = makeNode(whileNode, NodeType.condition, '', DataType.i32, t2)
 		index = parseExpression(condition, tokens, index+2)
 
-		index += 1
-		const loopBody = makeNode(whileNode, NodeType.loopBody, '', DataType.na, tokens[index])
-		index = parseForm(loopBody, tokens, index)
+		const tk0 = tokens[index]
+		if (! isPunct(tk0, '{') )
+			throw new Error(`[${tk0.line+1}, ${tk0.column+1}] Wrong symbol in "while". Expected "{" but got: ${tk0.value}`)
+
+		const loopBody = makeNode(whileNode, NodeType.loopBody, '', DataType.na, tk0)
+
+		index = parseForm(loopBody, tokens, index+1)
 
 		return parseForm(parentNode, tokens, index)
 	}
@@ -514,19 +538,29 @@ function parseForm(parentNode, tokens, index)
 	//    +-- condition
 	//    +-- then
 	//    \-- else
-	if (t0.type === TokenType.keyword && t0.value === 'if' &&
-		t1.type === TokenType.punctuation && t1.value === '(') {
+	if ( isKeyword(t0, 'if') ) {
+		if (! isPunct(t1, '(') )
+			throw new Error(`[${t1.line+1}, ${t1.column+1}] Wrong symbol in "if". Expected "(" but got: ${t1.value}`)
 
-		const ifNode = makeNode(parentNode, NodeType.if, '', DataType.na, t0)
-
-		const condition = makeNode(ifNode, NodeType.condition, '', DataType.i32, t2)
+		const ifNode    = makeNode(parentNode, NodeType.if,        '', DataType.na,  t0)
+		const condition = makeNode(ifNode,     NodeType.condition, '', DataType.i32, t2)
 		index = parseExpression(condition, tokens, index+2)
+
+		const tk0 = tokens[index]
+		if (! isPunct(tk0, '{') )
+			throw new Error(`[${tk0.line+1}, ${tk0.column+1}] Wrong symbol in "if". Expected "{" but got: ${tk0.value}`)
 
 		const thenNode = makeNode(ifNode, NodeType.then, '', DataType.na, tokens[index])
 		index = parseForm(thenNode, tokens, index+1)
 
-		if (tokens[index].type === TokenType.keyword && tokens[index].value === 'else') {
-			const elseNode = makeNode(ifNode, NodeType.else, '', DataType.na, tokens[index])
+		const tk1 = tokens[index]
+		if ( isKeyword(tk1, 'else') ) {
+			const elseNode = makeNode(ifNode, NodeType.else, '', DataType.na, tk1)
+
+			const tk2 = tokens[index+1]
+			if (! isPunct(tk2, '{') )
+				throw new Error(`[${tk2.line+1}, ${tk2.column+1}] Wrong symbol in "else". Expected "{" but got: ${tk2.value}`)
+
 			index = parseForm(elseNode, tokens, index+2)
 		}
 
@@ -535,8 +569,10 @@ function parseForm(parentNode, tokens, index)
 
 	// Assignment
 	// foo = expression;
-	if (t0.type === TokenType.word &&
-		t1.type === TokenType.operator && t1.value === '=') {
+	if ( isWord(t0) ) {
+		if (! isOperator(t1, '=') )
+			throw new Error(`[${t1.line+1}, ${t1.column+1}] Wrong symbol in assignment. Expected "=" but got: ${t1.value}`)
+
 		index = parseAssignment(parentNode, tokens, index)
 
 		return parseForm(parentNode, tokens, index)
@@ -677,7 +713,7 @@ function parseExpressionChain(parentNode, tokens, index)
 		return parseExpressionChain(parentNode, tokens, index+1)
 	}
 
-	throw new Error(`[${t0.line+1}, ${t0.column+1}] Unrecognised expression symbol in ${parentNode.type}:  ${t0.value}`)
+	throw new Error(`[${t0.line+1}, ${t0.column+1}] Unrecognised symbol in ${parentNode.type}:  ${t0.value}`)
 }
 
 /**
