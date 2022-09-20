@@ -597,19 +597,25 @@ function parseForm(parentNode, tokens, index)
 function parseAssignment(parentNode, tokens, index)
 {
 	const t0 = tokens[index]
+	if (! isWord(t0) )
+		throw new Error(`[${t0.line+1}, ${t0.column+1}] Wrong symbol in assignment. Expected a variable name but got: ${t0.value}`)
 
 	const varName = t0.value
-
 	const varNode = lookup(parentNode, varName)
 	if (varNode === null)
-		throw new Error('Cannot find a variable: ' + varName)
+		throw new Error(`[${t0.line+1}, ${t0.column+1}] Cannot find a variable:  ${varName}`)
 	if (varNode.type === NodeType.localConst || varNode.type === NodeType.globalConst)
-		throw new Error('Cannot assign value to a constant: ' + varName)
+		throw new Error(`[${t0.line+1}, ${t0.column+1}] Cannot assign value to a constant:  ${varName}`)
 
 	const nodeType = varNode.type === NodeType.globalVar ? NodeType.globalSet : NodeType.localSet
 	const varSet   = makeNode(parentNode, nodeType, varNode.value, varNode.dataType, t0)
 
-	return parseExpression(varSet, tokens, index+2)
+	index = parseExpression(varSet, tokens, index+2)
+
+	if ( isPunct(tokens[index-1], ',') )
+		return parseAssignment(parentNode, tokens, index)
+
+	return index
 }
 
 /**
