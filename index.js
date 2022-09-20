@@ -1,4 +1,4 @@
-// noinspection GrazieInspection
+'use strict'
 
 /**
  * @typedef {Object} Token
@@ -73,7 +73,6 @@ const NodeType = {
 	return       : 'return',
 	statement    : 'statement',
 	then         : 'then',
-	variable     : 'variable',
 	while        : 'while',
 }
 
@@ -88,11 +87,7 @@ const DataType = {
 	f32   : 'f32',
 	f64   : 'f64',
 	void  : 'void',
-	number: 'number'
 }
-
-/** @type {string[]} */
-const dataTypes = ['int', 'long', 'float', 'double', 'void']
 
 const dataTypeMap = {
 	int    : DataType.i32,
@@ -119,15 +114,6 @@ const operatorPrecedence = {
 	'?:' : 2, // Ternary operator
 	','  : 1, // Comma sequence
 }
-
-/** @type {NodeType[]} */
-const variableTypes = [
-	NodeType.localVar,
-	NodeType.localConst,
-	NodeType.globalVar,
-	NodeType.globalConst,
-	NodeType.function
-]
 
 /**
  * Makes a new node
@@ -159,7 +145,9 @@ function makeNode(parent, type, value, dataType, token= null)
  */
 function isDataType(token)
 {
-	return token.type === TokenType.keyword && dataTypes.includes(token.value)
+	return token.type === TokenType.keyword && [
+		'int', 'long', 'float', 'double', 'void'
+	].includes(token.value)
 }
 
 /**
@@ -270,7 +258,7 @@ function parseModule(moduleNode, tokens, index, )
 		return parseModule(moduleNode, tokens, index+5)
 	}
 
-	// Global const
+	// Global constant
 	// const int foo = 42;
 	if ( isKeyword(t0, 'const') && isDataType(t1) && isWord(t2) && isOperator(t3, '=') ) {
 		const globalConst = makeNode(moduleNode, NodeType.globalConst, t2.value, dataTypeMap[t1.value], t0)
@@ -373,7 +361,6 @@ function parseFuncBody(funcBody, tokens, index)
 	const t0 = tokens[index]
 	const t1 = tokens[index+1]
 
-	// Function body ends with "}"
 	if ( isPunct(t0, '}') )
 		return index + 1
 
@@ -408,9 +395,7 @@ function parseForm(parentNode, tokens, index)
 	const t1 = tokens[index+1]
 	const t2 = tokens[index+2]
 
-	// Form ends with "}"
-	if ( isPunct(t0, '}') )
-		return index + 1
+	if ( isPunct(t0, '}') ) return index+1
 
 	// Function return
 	// return expression;
@@ -656,11 +641,10 @@ function parseExpressionChain(parentNode, tokens, index)
 	const t0 = tokens[index]
 	const t1 = tokens[index+1]
 
-	if (t0.type === TokenType.punctuation && [';', ',', ')'].includes(t0.value) )
-		return index+1
+	if ( isPunct(t0, ';') || isPunct(t0, ',') || isPunct(t0, ')') ) return index+1
 
 	// Open parenthesis
-	if (t0.type === TokenType.punctuation && t0.value === '(') {
+	if ( isPunct(t0, '(') ) {
 		const openParen = makeNode(parentNode, NodeType.expression, '', parentNode.dataType, t0)
 		index = parseExpression(openParen, tokens, index+1)
 		return parseExpressionChain(parentNode, tokens, index)
@@ -668,7 +652,7 @@ function parseExpressionChain(parentNode, tokens, index)
 
 	// Number
 	// 42 | 3.14F
-	if (t0.type === TokenType.number) {
+	if ( isNumber(t0) ) {
 		parseNumber(parentNode, t0)
 		return parseExpressionChain(parentNode, tokens, index+1)
 	}
@@ -682,8 +666,7 @@ function parseExpressionChain(parentNode, tokens, index)
 
 	// Function call
 	// foo(bar, ...)
-	if (t0.type === TokenType.word &&
-		t1.type === TokenType.punctuation && t1.value === '(') {
+	if ( isWord(t0) && isPunct(t1, '(') ) {
 		const funcName = t0.value
 		const funcNode = lookup(parentNode, funcName)
 
@@ -694,22 +677,22 @@ function parseExpressionChain(parentNode, tokens, index)
 		index += 2
 
 		// Void call
-		if (t1.type === TokenType.punctuation && t1.type === ')')
+		if ( isPunct(t1, ')') )
 			return parseExpressionChain(parentNode, tokens, index)
 
 		do {
 			index = parseExpression(funcCall, tokens, index)
-		} while(tokens[index-1].type === TokenType.punctuation && tokens[index-1].value === ',' )
+		} while( isPunct(tokens[index-1], ',') )
 
 		return parseExpressionChain(parentNode, tokens, index)
 	}
 
 	// Variable lookup
 	// foo
-	if (t0.type === TokenType.word) {
+	if ( isWord(t0) ) {
 		const varNode = lookup(parentNode, t0.value)
 		if (varNode === null)
-			throw new Error('Cannot find a variable: ' + t0.value)
+			throw new Error(`[${t0.line+1}, ${t0.column+1}] Cannot find a variable:  ${t0.value}`)
 
 		const nodeType = varNode.type === NodeType.globalVar || varNode.type === NodeType.globalConst
 			? NodeType.globalGet
@@ -789,6 +772,13 @@ function parseNumber(parentNode, token)
 function lookup(parentNode, varName)
 {
 	if (parentNode === null) return null
+
+	/** @type {NodeType[]} */
+	const variableTypes = [
+		NodeType.localVar,  NodeType.localConst,
+		NodeType.globalVar, NodeType.globalConst,
+		NodeType.function
+	]
 
 	for (const node of parentNode.nodes) {
 		if (variableTypes.includes(node.type) && node.value === varName)
