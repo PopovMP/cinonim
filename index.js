@@ -19,7 +19,7 @@
  * @property {Token|null} token
  * @property {Node|null}  parent
  * @property {string[]}   [data]
-  */
+ */
 
 /**
  * TokenType
@@ -163,6 +163,69 @@ function isDataType(token)
 }
 
 /**
+ * Gets if token is wanted punctuation
+ *
+ * @param {Token} token
+ * @param {string} value
+ *
+ * @return {boolean}
+ */
+function isPunct(token, value)
+{
+	return token.type === TokenType.punctuation && token.value === value
+}
+
+/**
+ * Gets if token is wanted operator
+ *
+ * @param {Token} token
+ * @param {string} value
+ *
+ * @return {boolean}
+ */
+function isOperator(token, value)
+{
+	return token.type === TokenType.operator && token.value === value
+}
+
+/**
+ * Gets if token is wanted keyword
+ *
+ * @param {Token} token
+ * @param {string} value
+ *
+ * @return {boolean}
+ */
+function isKeyword(token, value)
+{
+	return token.type === TokenType.keyword && token.value === value
+}
+
+/**
+ * Gets if token is word
+ *
+ * @param {Token} token
+ *
+ * @return {boolean}
+ */
+function isWord(token)
+{
+	return token.type === TokenType.word
+}
+
+/**
+ * Gets if token is a number
+ *
+ * @param {Token} token
+ *
+ * @return {boolean}
+ */
+function isNumber(token)
+{
+	return token.type === TokenType.number
+}
+
+/**
  * Parses tokens to AST
  *
  * @param {Token[]} tokens
@@ -192,34 +255,47 @@ function parseModule(moduleNode, tokens, index, )
 {
 	if (index === tokens.length) return
 
-	const t0 = tokens[index];
+	const t0 = tokens[index]
 	const t1 = tokens[index+1]
 	const t2 = tokens[index+2]
 	const t3 = tokens[index+3]
+	const t4 = tokens[index+4]
 
 	// Global variable
 	// int foo = 42;
-	if (isDataType(t0) &&
-		t1.type === TokenType.word &&
-		t2.type === TokenType.operator && t2.value === '=') {
-
+	if ( isDataType(t0) && isWord(t1) && isOperator(t2, '=') ) {
 		const globalVar = makeNode(moduleNode, NodeType.globalVar, t1.value, dataTypeMap[t0.value], t0)
-		parseExpression(globalVar, tokens, index+3)
+		parseNumber(globalVar, t3)
 
 		return parseModule(moduleNode, tokens, index+5)
 	}
 
 	// Global const
 	// const int foo = 42;
-	if (t0.type === TokenType.keyword && t0.value === 'const' &&
-		isDataType(t1) &&
-		t2.type === TokenType.word &&
-		t3.type === TokenType.operator && t3.value === '=') {
-
+	if ( isKeyword(t0, 'const') && isDataType(t1) && isWord(t2) && isOperator(t3, '=') ) {
 		const globalConst = makeNode(moduleNode, NodeType.globalConst, t2.value, dataTypeMap[t1.value], t0)
-		parseExpression(globalConst, tokens, index+4)
+		parseNumber(globalConst, t4)
 
 		return parseModule(moduleNode, tokens, index+6)
+	}
+
+	// Function definition
+	// int foo(int bar, const int baz) { }
+	// function
+	//   +-- funcParams
+	//   \-- funcBody
+	if ( isDataType(t0) && isWord(t1) && isPunct(t2, '(') ) {
+		const dataType = dataTypeMap[t0.value]
+		const funcName = t1.value
+
+		const funcNode   = makeNode(moduleNode, NodeType.function,   funcName, dataType)
+		const funcParams = makeNode(funcNode,   NodeType.funcParams, funcName, DataType.na)
+		const funcBody   = makeNode(funcNode,   NodeType.funcBody,   funcName, dataType)
+
+		index = parseFuncParams(funcParams, tokens, index+3)
+		index = parseFuncBody(funcBody, tokens, index+1)
+
+		return parseModule(moduleNode, tokens, index)
 	}
 
 	// Import function
@@ -233,28 +309,6 @@ function parseModule(moduleNode, tokens, index, )
 		const funcParams = makeNode(importFunc, NodeType.funcParams, '', DataType.na)
 
 		index = parseFuncParams(funcParams, tokens, index+7)
-
-		return parseModule(moduleNode, tokens, index)
-	}
-
-	// Function definition
-	// int foo(int bar, const int baz) { }
-	// function
-	//   +-- funcParams
-	//   \-- funcBody
-	if (isDataType(t0) &&
-		t1.type === TokenType.word &&
-		t2.type === TokenType.punctuation && t2.value === '(') {
-
-		const dataType = dataTypeMap[t0.value]
-		const funcName = t1.value
-
-		const funcNode   = makeNode(moduleNode, NodeType.function,   funcName, dataType)
-		const funcParams = makeNode(funcNode,   NodeType.funcParams, funcName, DataType.na)
-		const funcBody   = makeNode(funcNode,   NodeType.funcBody,   funcName, dataType)
-
-		index = parseFuncParams(funcParams, tokens, index+3)
-		index = parseFuncBody(funcBody, tokens, index+1)
 
 		return parseModule(moduleNode, tokens, index)
 	}
@@ -288,10 +342,10 @@ function parseFuncParams(funcParams, tokens, index)
 		const t1 = tokens[index+1]
 		const t2 = tokens[index+2]
 
-		if (t0.type === TokenType.punctuation && t0.value === ')') break
-		if (t0.type === TokenType.punctuation && t0.value === ',') continue
+		if ( isPunct(t0, ')') ) break
+		if ( isPunct(t0, ',') ) continue
 
-		if (t0.type === TokenType.keyword && t0.value === 'const') {
+		if ( isKeyword(t0, 'const') ) {
 			makeNode(funcParams, NodeType.localConst, t2.value, dataTypeMap[t1.value], t0)
 			index += 2
 		}
@@ -318,17 +372,14 @@ function parseFuncBody(funcBody, tokens, index)
 {
 	const t0 = tokens[index]
 	const t1 = tokens[index+1]
-	const t2 = tokens[index+2]
 
 	// Function body ends with "}"
-	if (t0.type === TokenType.punctuation && t0.value === '}')
+	if ( isPunct(t0, '}') )
 		return index + 1
 
 	// Local declaration
 	// int foo;
-	if (isDataType(t0) &&
-		t1.type === TokenType.word) {
-
+	if ( isDataType(t0) && isWord(t1) ) {
 		do {
 			index += 1
 			const tk = tokens[index]
@@ -358,51 +409,38 @@ function parseForm(parentNode, tokens, index)
 	const t2 = tokens[index+2]
 
 	// Form ends with "}"
-	if (t0.type === TokenType.punctuation && t0.value === '}')
+	if ( isPunct(t0, '}') )
 		return index + 1
 
 	// Function return
 	// return expression;
-	if (t0.type === TokenType.keyword && t0.value === 'return') {
+	if ( isKeyword(t0, 'return') ) {
 		const returnNode = makeNode(parentNode, NodeType.return, parentNode.value, parentNode.dataType, t0)
+		if ( isPunct(t1, ';') )
+			return index+1
 
 		index = parseExpression(returnNode, tokens, index+1)
 
 		const tk = tokens[index]
-		if (tk.type === TokenType.punctuation && tk.value === '}')
+		if ( isPunct(tk, '}') )
 			return index+1
 
 		throw new Error(`[${tk.line+1}, ${tk.column+1}] Found symbols after function return: ${tk.value}`)
 	}
 
-	// break;
-	if (t0.type === TokenType.keyword && t0.value === 'break' &&
-		t1.type === TokenType.punctuation && t1.value === ';') {
-		makeNode(parentNode, NodeType.break, 0, DataType.na, t0)
+	// break    index?;
+	// continue index?;
+	if ( isKeyword(t0, 'break') || isKeyword(t0, 'continue') ) {
+		const command = t0.value === 'break' ? NodeType.break : NodeType.continue
+
+		if ( isPunct(t1, ';') )
+			makeNode(parentNode, command, 0, DataType.na, t0)
+		else if ( isNumber(t1) && isPunct(t2, ';') )
+			makeNode(parentNode, command, t1.value, DataType.na, t0)
+		else
+			throw new Error(`[${t1.line+1}, ${t1.column+1}] Wrong symbol after ${t0.value}: ${t1.value}`)
+
 		return parseForm(parentNode, tokens, index+2)
-	}
-
-	// break index;
-	if (t0.type === TokenType.keyword && t0.value === 'break' &&
-		t1.type === TokenType.number &&
-		t2.type === TokenType.punctuation && t2.value === ';') {
-		makeNode(parentNode, NodeType.break, t1.value, DataType.na, t0)
-		return parseForm(parentNode, tokens, index+3)
-	}
-
-	// continue;
-	if (t0.type === TokenType.keyword && t0.value === 'continue' &&
-		t1.type === TokenType.punctuation && t1.value === ';') {
-		makeNode(parentNode, NodeType.continue, 0, DataType.na, t0)
-		return parseForm(parentNode, tokens, index+2)
-	}
-
-	// continue index;
-	if (t0.type === TokenType.keyword && t0.value === 'continue' &&
-		t1.type === TokenType.number &&
-		t2.type === TokenType.punctuation && t2.value === ';') {
-		makeNode(parentNode, NodeType.continue, t1.value, DataType.na, t0)
-		return parseForm(parentNode, tokens, index+3)
 	}
 
 	// for (assignment; condition; assignment) { FORM }
@@ -589,52 +627,7 @@ function parseExpressionChain(parentNode, tokens, index)
 	// Number
 	// 42 | 3.14F
 	if (t0.type === TokenType.number) {
-		const sfxMatch = t0.value.match(/([LFD])$/)
-		const suffix   = sfxMatch ? sfxMatch[1] : ''
-		const decPoint = t0.value.includes('.')
-
-		switch (suffix) {
-			case 'L': {
-				if (decPoint)
-					throw new Error(`[${t0.line+1}, ${t0.column+1}] Wrong number suffix L in:  ${t0.value}`)
-				if (parentNode.dataType !== DataType.i64)
-					throw new Error(`[${t0.line+1}, ${t0.column+1}] Wrong data type. Expected ${parentNode.dataType}, but got i64: ${t0.value}`)
-				makeNode(parentNode, NodeType.number, parseInt(t0.value), DataType.i64, t0)
-				break
-			}
-			case 'F': {
-				if (t0.value.length > 8)
-					throw new Error(`[${t0.line+1}, ${t0.column+1}] Losing precision in:  ${t0.value}`)
-				if (parentNode.dataType !== DataType.f32)
-					throw new Error(`[${t0.line+1}, ${t0.column+1}] Wrong data type. Expected ${parentNode.dataType}, but got f32: ${t0.value}`)
-				makeNode(parentNode, NodeType.number, parseFloat(t0.value), DataType.f32, t0)
-				break
-			}
-			case 'D': {
-				if (parentNode.dataType !== DataType.f64)
-					throw new Error(`[${t0.line+1}, ${t0.column+1}] Wrong data type. Expected ${parentNode.dataType}, but got f64: ${t0.value}`)
-				makeNode(parentNode, NodeType.number, parseFloat(t0.value), DataType.f64, t0)
-				break
-			}
-			default: {
-				if (decPoint) {
-					if (t0.value.length > 8 || parentNode.dataType === DataType.f64) {
-						if (parentNode.dataType !== DataType.f64)
-							throw new Error(`[${t0.line+1}, ${t0.column+1}] Wrong data type. Expected ${parentNode.dataType}, but got f64: ${t0.value}`)
-						makeNode(parentNode, NodeType.number, parseFloat(t0.value), DataType.f64, t0)
-					}
-					else {
-						if (parentNode.dataType !== DataType.f32)
-							throw new Error(`[${t0.line+1}, ${t0.column+1}] Wrong data type. Expected ${parentNode.dataType}, but got f32: ${t0.value}`)
-						makeNode(parentNode, NodeType.number, parseFloat(t0.value), DataType.f32, t0)
-					}
-				}
-				else {
-					makeNode(parentNode, NodeType.number, parseInt(t0.value), parentNode.dataType, t0)
-				}
-			}
-		}
-
+		parseNumber(parentNode, t0)
 		return parseExpressionChain(parentNode, tokens, index+1)
 	}
 
@@ -685,6 +678,62 @@ function parseExpressionChain(parentNode, tokens, index)
 	}
 
 	throw new Error(`[${t0.line+1}, ${t0.column+1}] Unrecognised expression symbol in ${parentNode.type}:  ${t0.value}`)
+}
+
+/**
+ * Parses a number
+ *
+ * @param {Node} parentNode
+ * @param {Token} token
+ *
+ */
+function parseNumber(parentNode, token)
+{
+	const sfxMatch = token.value.match(/([LFD])$/)
+	const suffix   = sfxMatch ? sfxMatch[1] : ''
+	const decPoint = token.value.includes('.')
+
+	switch (suffix) {
+		case 'L': {
+			if (decPoint)
+				throw new Error(`[${token.line+1}, ${token.column+1}] Wrong number suffix L in:  ${token.value}`)
+			if (parentNode.dataType !== DataType.i64)
+				throw new Error(`[${token.line+1}, ${token.column+1}] Wrong data type. Expected ${parentNode.dataType}, but got i64: ${token.value}`)
+			makeNode(parentNode, NodeType.number, parseInt(token.value), DataType.i64, token)
+			break
+		}
+		case 'F': {
+			if (token.value.length > 8)
+				throw new Error(`[${token.line+1}, ${token.column+1}] Losing precision in:  ${token.value}`)
+			if (parentNode.dataType !== DataType.f32)
+				throw new Error(`[${token.line+1}, ${token.column+1}] Wrong data type. Expected ${parentNode.dataType}, but got f32: ${token.value}`)
+			makeNode(parentNode, NodeType.number, parseFloat(token.value), DataType.f32, token)
+			break
+		}
+		case 'D': {
+			if (parentNode.dataType !== DataType.f64)
+				throw new Error(`[${token.line+1}, ${token.column+1}] Wrong data type. Expected ${parentNode.dataType}, but got f64: ${token.value}`)
+			makeNode(parentNode, NodeType.number, parseFloat(token.value), DataType.f64, token)
+			break
+		}
+		default: {
+			if (decPoint) {
+				if (token.value.length > 8 || parentNode.dataType === DataType.f64) {
+					if (parentNode.dataType !== DataType.f64)
+						throw new Error(`[${token.line+1}, ${token.column+1}] Wrong data type. Expected ${parentNode.dataType}, but got f64: ${token.value}`)
+					makeNode(parentNode, NodeType.number, parseFloat(token.value), DataType.f64, token)
+				}
+				else {
+					if (parentNode.dataType !== DataType.f32)
+						throw new Error(`[${token.line+1}, ${token.column+1}] Wrong data type. Expected ${parentNode.dataType}, but got f32: ${token.value}`)
+					makeNode(parentNode, NodeType.number, parseFloat(token.value), DataType.f32, token)
+				}
+			}
+			else {
+				makeNode(parentNode, NodeType.number, parseInt(token.value), parentNode.dataType, token)
+			}
+		}
+	}
 }
 
 /**
