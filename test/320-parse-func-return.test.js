@@ -49,36 +49,24 @@ describe('function return', () => {
 		strictEqual(numberNode.dataType,  DataType.f32,    'numberNode.dataType must be f32')
 	})
 
-	it('return global var', () => {
+	it('return void', () => {
 		const src = `
-			int bar = 42;
-			int foo() {
-				return bar;
+			void foo() {
+				return;
 			}`
-		const [globalVar, funcNode]    = parseModule(src)
+		const [funcNode]    = parseModule(src)
 		const [_, funcBody] = funcNode.nodes
 		const [returnNode]  = funcBody.nodes
-		const [valueNode]   = returnNode.nodes
-
-		strictEqual(typeof globalVar,   'object',           'globalVar must be an object')
-		strictEqual(globalVar.type,     NodeType.globalVar, 'globalVar.type must be NodeType.globalVar')
-		strictEqual(globalVar.value,    'bar',              'globalVar.value must be "bar"')
-		strictEqual(globalVar.dataType, DataType.i32,       'globalVar.dataType must be i32')
 
 		strictEqual(typeof funcNode,   'object',           'funcNode must be an object')
 		strictEqual(funcNode.type,     NodeType.function,  'funcNode.type must be NodeType.function')
 		strictEqual(funcNode.value,    'foo',              'funcNode.value must be "foo"')
-		strictEqual(funcNode.dataType, DataType.i32,       'funcNode.dataType must be i32')
+		strictEqual(funcNode.dataType, DataType.void,      'funcNode.dataType must be void')
 
 		strictEqual(typeof returnNode,    'object',        'returnNode must be an object')
 		strictEqual(returnNode.type,      NodeType.return, 'returnNode.type must be NodeType.return')
 		strictEqual(returnNode.value,     'foo',           'returnNode.value must be "foo"')
-		strictEqual(returnNode.dataType,  DataType.i32,    'returnNode.dataType must be i32')
-
-		strictEqual(typeof valueNode,    'object',           'valueNode must be an object')
-		strictEqual(valueNode.type,      NodeType.globalGet, 'valueNode.type must be NodeType.globalGet')
-		strictEqual(valueNode.value,     'bar',              'valueNode.value must be "bar')
-		strictEqual(valueNode.dataType,  DataType.i32,       'valueNode.dataType must be i32')
+		strictEqual(returnNode.dataType,  DataType.void,   'returnNode.dataType must be void')
 	})
 
 	it('return global const', () => {

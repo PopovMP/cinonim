@@ -403,7 +403,7 @@ function parseForm(parentNode, tokens, index)
 	if ( isKeyword(t0, 'return') ) {
 		const returnNode = makeNode(parentNode, NodeType.return, parentNode.value, parentNode.dataType, t0)
 		if ( isPunctuation(t1, ';') )
-			return index+1
+			return parseForm(parentNode, tokens, index+2)
 
 		index = parseExpression(returnNode, tokens, index+1)
 
