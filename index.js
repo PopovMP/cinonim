@@ -158,7 +158,7 @@ function isDataType(token)
  *
  * @return {boolean}
  */
-function isPunct(token, value)
+function isPunctuation(token, value)
 {
 	return token.type === TokenType.punctuation && token.value === value
 }
@@ -272,7 +272,7 @@ function parseModule(moduleNode, tokens, index, )
 	// function
 	//   +-- funcParams
 	//   \-- funcBody
-	if ( isDataType(t0) && isWord(t1) && isPunct(t2, '(') ) {
+	if ( isDataType(t0) && isWord(t1) && isPunctuation(t2, '(') ) {
 		const dataType = dataTypeMap[t0.value]
 		const funcName = t1.value
 
@@ -330,8 +330,8 @@ function parseFuncParams(funcParams, tokens, index)
 		const t1 = tokens[index+1]
 		const t2 = tokens[index+2]
 
-		if ( isPunct(t0, ')') ) break
-		if ( isPunct(t0, ',') ) continue
+		if ( isPunctuation(t0, ')') ) break
+		if ( isPunctuation(t0, ',') ) continue
 
 		if ( isKeyword(t0, 'const') ) {
 			makeNode(funcParams, NodeType.localConst, t2.value, dataTypeMap[t1.value], t0)
@@ -361,18 +361,19 @@ function parseFuncBody(funcBody, tokens, index)
 	const t0 = tokens[index]
 	const t1 = tokens[index+1]
 
-	if ( isPunct(t0, '}') )
+	if ( isPunctuation(t0, '}') )
 		return index + 1
 
 	// Local declaration
 	// int foo;
 	if ( isDataType(t0) && isWord(t1) ) {
+		const dataType = dataTypeMap[t0.value]
 		do {
-			index += 1
-			const tk = tokens[index]
-			makeNode(funcBody, NodeType.localVar, tk.value, dataTypeMap[t0.value], tk)
-			index += 1
-		} while (tokens[index].value === ',')
+			const varToken = tokens[index+1]
+			const varName  = varToken.value
+			makeNode(funcBody, NodeType.localVar, varName, dataType, varToken)
+			index += 2
+		} while ( isPunctuation(tokens[index], ',') )
 
 		return parseFuncBody(funcBody, tokens, index+1)
 	}
@@ -395,37 +396,46 @@ function parseForm(parentNode, tokens, index)
 	const t1 = tokens[index+1]
 	const t2 = tokens[index+2]
 
-	if ( isPunct(t0, '}') ) return index+1
+	if ( isPunctuation(t0, '}') ) return index+1
 
 	// Function return
-	// return expression;
+	// return expression?;}
 	if ( isKeyword(t0, 'return') ) {
 		const returnNode = makeNode(parentNode, NodeType.return, parentNode.value, parentNode.dataType, t0)
-		if ( isPunct(t1, ';') )
+		if ( isPunctuation(t1, ';') )
 			return index+1
 
 		index = parseExpression(returnNode, tokens, index+1)
 
 		const tk = tokens[index]
-		if ( isPunct(tk, '}') )
-			return index+1
+		if (! isPunctuation(tk, '}') )
+			throw new Error(`[${tk.line+1}, ${tk.column+1}] Found symbols after function return: ${tk.value}`)
 
-		throw new Error(`[${tk.line+1}, ${tk.column+1}] Found symbols after function return: ${tk.value}`)
+		return parseForm(parentNode, tokens, index)
 	}
 
-	// break    index?;
-	// continue index?;
+	// break    index?;}
+	// continue index?;}
 	if ( isKeyword(t0, 'break') || isKeyword(t0, 'continue') ) {
 		const command = t0.value === 'break' ? NodeType.break : NodeType.continue
 
-		if ( isPunct(t1, ';') )
+		if ( isPunctuation(t1, ';') ) {
 			makeNode(parentNode, command, 0, DataType.na, t0)
-		else if ( isNumber(t1) && isPunct(t2, ';') )
+			index += 2
+		}
+		else if ( isNumber(t1) && isPunctuation(t2, ';') ) {
 			makeNode(parentNode, command, t1.value, DataType.na, t0)
-		else
-			throw new Error(`[${t1.line+1}, ${t1.column+1}] Wrong symbol in "${t0.value}", Expected ";" or an index but got: ${t1.value}`)
+			index += 3
+		}
+		else {
+			throw new Error(`[${t1.line + 1}, ${t1.column + 1}] Wrong symbol in "${t0.value}", Expected ";" or an index but got: ${t1.value}`)
+		}
 
-		return parseForm(parentNode, tokens, index+2)
+		const tk = tokens[index]
+		if (! isPunctuation(tk, '}') )
+			throw new Error(`[${tk.line+1}, ${tk.column+1}] Found symbols after ${command}: ${tk.value}`)
+
+		return parseForm(parentNode, tokens, index)
 	}
 
 	// for (assignment; condition; assignment) { FORM }
@@ -438,7 +448,7 @@ function parseForm(parentNode, tokens, index)
 		const forNode  = makeNode(parentNode, NodeType.for,       '', DataType.na, t0)
 		const initNode = makeNode(forNode,    NodeType.statement, '', DataType.na, t2)
 
-		if ( isPunct(t2, ';') )
+		if ( isPunctuation(t2, ';') )
 			index += 3
 		else
 			index = parseAssignment(initNode, tokens, index+2)
@@ -446,7 +456,7 @@ function parseForm(parentNode, tokens, index)
 		const tk = tokens[index]
 		const condition = makeNode(forNode, NodeType.condition, '', DataType.i32, tk)
 
-		if ( isPunct(tk, ';') )
+		if ( isPunctuation(tk, ';') )
 			index += 1
 		else
 			index = parseExpression(condition, tokens, index)
@@ -454,7 +464,7 @@ function parseForm(parentNode, tokens, index)
 		const tk1 = tokens[index]
 		const increment = makeNode(forNode, NodeType.statement, '', DataType.na,  tk1)
 
-		if ( isPunct(tk1, ')') )
+		if ( isPunctuation(tk1, ')') )
 			index += 1
 		else
 			index = parseAssignment(increment, tokens, index)
@@ -470,7 +480,7 @@ function parseForm(parentNode, tokens, index)
 	//    +-- loopBody
 	//    \-- condition
 	if ( isKeyword(t0, 'do') ) {
-		if (! isPunct(t1, '{') )
+		if (! isPunctuation(t1, '{') )
 			throw new Error(`[${t1.line+1}, ${t1.column+1}] Wrong symbol in "do". Expected "{" but got: ${t1.value}`)
 
 		const doNode   = makeNode(parentNode, NodeType.do,       '', DataType.na, t0)
@@ -483,7 +493,7 @@ function parseForm(parentNode, tokens, index)
 			throw new Error(`[${tk0.line+1}, ${tk0.column+1}] Wrong symbol in "do". Expected "while" but got: ${tk0.value}`)
 
 		const tk1 = tokens[index+1]
-		if (! isPunct(tk1, '(') )
+		if (! isPunctuation(tk1, '(') )
 			throw new Error(`[${tk1.line+1}, ${tk1.column+1}] Wrong symbol in "do". Expected "(" but got: ${tk1.value}`)
 
 		index += 2
@@ -498,7 +508,7 @@ function parseForm(parentNode, tokens, index)
 	//    +-- condition
 	//    \-- loopBody
 	if ( isKeyword(t0, 'while') ) {
-		if (! isPunct(t1, '(') )
+		if (! isPunctuation(t1, '(') )
 			throw new Error(`[${t1.line+1}, ${t1.column+1}] Wrong symbol in "while". Expected "(" but got: ${t1.value}`)
 
 		const whileNode = makeNode(parentNode, NodeType.while,     '', DataType.na,  t0)
@@ -507,7 +517,7 @@ function parseForm(parentNode, tokens, index)
 		index = parseExpression(condition, tokens, index+2)
 
 		const tk0 = tokens[index]
-		if (! isPunct(tk0, '{') )
+		if (! isPunctuation(tk0, '{') )
 			throw new Error(`[${tk0.line+1}, ${tk0.column+1}] Wrong symbol in "while". Expected "{" but got: ${tk0.value}`)
 
 		const loopBody = makeNode(whileNode, NodeType.loopBody, '', DataType.na, tk0)
@@ -524,7 +534,7 @@ function parseForm(parentNode, tokens, index)
 	//    +-- then
 	//    \-- else
 	if ( isKeyword(t0, 'if') ) {
-		if (! isPunct(t1, '(') )
+		if (! isPunctuation(t1, '(') )
 			throw new Error(`[${t1.line+1}, ${t1.column+1}] Wrong symbol in "if". Expected "(" but got: ${t1.value}`)
 
 		const ifNode    = makeNode(parentNode, NodeType.if,        '', DataType.na,  t0)
@@ -532,7 +542,7 @@ function parseForm(parentNode, tokens, index)
 		index = parseExpression(condition, tokens, index+2)
 
 		const tk0 = tokens[index]
-		if (! isPunct(tk0, '{') )
+		if (! isPunctuation(tk0, '{') )
 			throw new Error(`[${tk0.line+1}, ${tk0.column+1}] Wrong symbol in "if". Expected "{" but got: ${tk0.value}`)
 
 		const thenNode = makeNode(ifNode, NodeType.then, '', DataType.na, tokens[index])
@@ -543,7 +553,7 @@ function parseForm(parentNode, tokens, index)
 			const elseNode = makeNode(ifNode, NodeType.else, '', DataType.na, tk1)
 
 			const tk2 = tokens[index+1]
-			if (! isPunct(tk2, '{') )
+			if (! isPunctuation(tk2, '{') )
 				throw new Error(`[${tk2.line+1}, ${tk2.column+1}] Wrong symbol in "else". Expected "{" but got: ${tk2.value}`)
 
 			index = parseForm(elseNode, tokens, index+2)
@@ -597,7 +607,7 @@ function parseAssignment(parentNode, tokens, index)
 
 	index = parseExpression(varSet, tokens, index+2)
 
-	if ( isPunct(tokens[index-1], ',') )
+	if ( isPunctuation(tokens[index-1], ',') )
 		return parseAssignment(parentNode, tokens, index)
 
 	return index
@@ -641,10 +651,10 @@ function parseExpressionChain(parentNode, tokens, index)
 	const t0 = tokens[index]
 	const t1 = tokens[index+1]
 
-	if ( isPunct(t0, ';') || isPunct(t0, ',') || isPunct(t0, ')') ) return index+1
+	if ( isPunctuation(t0, ';') || isPunctuation(t0, ',') || isPunctuation(t0, ')') ) return index+1
 
 	// Open parenthesis
-	if ( isPunct(t0, '(') ) {
+	if ( isPunctuation(t0, '(') ) {
 		const openParen = makeNode(parentNode, NodeType.expression, '', parentNode.dataType, t0)
 		index = parseExpression(openParen, tokens, index+1)
 		return parseExpressionChain(parentNode, tokens, index)
@@ -666,7 +676,7 @@ function parseExpressionChain(parentNode, tokens, index)
 
 	// Function call
 	// foo(bar, ...)
-	if ( isWord(t0) && isPunct(t1, '(') ) {
+	if ( isWord(t0) && isPunctuation(t1, '(') ) {
 		const funcName = t0.value
 		const funcNode = lookup(parentNode, funcName)
 
@@ -677,12 +687,12 @@ function parseExpressionChain(parentNode, tokens, index)
 		index += 2
 
 		// Void call
-		if ( isPunct(t1, ')') )
+		if ( isPunctuation(t1, ')') )
 			return parseExpressionChain(parentNode, tokens, index)
 
 		do {
 			index = parseExpression(funcCall, tokens, index)
-		} while( isPunct(tokens[index-1], ',') )
+		} while( isPunctuation(tokens[index-1], ',') )
 
 		return parseExpressionChain(parentNode, tokens, index)
 	}
