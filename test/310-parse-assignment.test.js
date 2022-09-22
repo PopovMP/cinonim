@@ -20,7 +20,7 @@ const src = `
 		b = fg;
 		b = dg;
 		b = ig;
-		a = (int) fg;
+		a = 3 + ((int) fg);
 		a = (int) lg;
 	}
 `
@@ -52,12 +52,15 @@ module module
                 globalGet ig: i32
             localSet a: i32
                 expression: i32
-                    globalGet fg: f32
-                    cast int: i32
+                    number 3: i32
+                    expression: i32
+                        globalGet fg: f32
+                        cast cast: i32
+                    operator +: i32
             localSet a: i32
                 expression: i32
                     globalGet lg: i64
-                    cast int: i32
+                    cast cast: i32
 `
 
 describe('assignment', () => {

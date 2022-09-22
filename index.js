@@ -101,7 +101,7 @@ const dataTypeMap = {
 // noinspection JSUnusedLocalSymbols
 const operatorPrecedence = {
 	'('  : 18, ')'  : 18,
-	'['  : 17, ']'  : 17, 'funcCall': 17,
+	'['  : 17, ']'  : 17, 'funcCall': 17, 'cast': 17,
 	'.++': 15, '.--': 15, // Postfix increment, decrement
 	'++.': 14, '--.': 14, // Prefix  increment, decrement
 	'-.' : 14, '!'  : 14, // Negate, not
@@ -120,7 +120,7 @@ const operatorPrecedence = {
 const variableTypes = [
 	NodeType.localVar,  NodeType.localConst,
 	NodeType.globalVar, NodeType.globalConst,
-	NodeType.function
+	NodeType.function,
 ]
 
 /**
@@ -668,7 +668,7 @@ function parseExpressionChain(parentNode, tokens, index)
 	// Cast
 	// (dataType)
 	if (isPunctuation(t0, '(') && isDataType(t1) && isPunctuation(t2, ')')) {
-		makeNode(parentNode, NodeType.cast, t1.value, dataTypeMap[t1.value], t1)
+		makeNode(parentNode, NodeType.cast, 'cast', dataTypeMap[t1.value], t1)
 		return parseExpressionChain(parentNode, tokens, index+3)
 	}
 
@@ -928,12 +928,12 @@ function isOperandNode(node)
  */
 function isHigherPrecedence(opA, opB)
 {
-	if (opA.type !== NodeType.operator || !operatorPrecedence.hasOwnProperty(opA.value)) {
+	if (opA.type !== NodeType.operator && opA.type !== NodeType.cast) {
 		const t0 = opA.token
 		throw new Error(`[${t0.line+1}, ${t0.column+1}] Unrecognised operator in ${opA.parent.value}:  ${opA.value}`)
 	}
 
-	if (opB.type !== NodeType.operator || !operatorPrecedence.hasOwnProperty(opB.value)) {
+	if (opB.type !== NodeType.operator && opB.type !== NodeType.cast) {
 		const t0 = opB.token
 		throw new Error(`[${t0.line+1}, ${t0.column+1}] Unrecognised operator in ${opB.parent.value}:  ${opB.value}`)
 	}
