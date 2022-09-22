@@ -115,6 +115,13 @@ const operatorPrecedence = {
 	','  : 1, // Comma sequence
 }
 
+/** @type {NodeType[]} */
+const variableTypes = [
+	NodeType.localVar,  NodeType.localConst,
+	NodeType.globalVar, NodeType.globalConst,
+	NodeType.function
+]
+
 /**
  * Makes a new node
  *
@@ -398,14 +405,17 @@ function parseForm(parentNode, tokens, index)
 
 	if ( isPunctuation(t0, '}') ) return index+1
 
-	// Function return
-	// return expression?;}
+	// return expression?;
+	// return
+	//    \-- expression
 	if ( isKeyword(t0, 'return') ) {
-		const returnNode = makeNode(parentNode, NodeType.return, parentNode.value, parentNode.dataType, t0)
-		if ( isPunctuation(t1, ';') )
-			return parseForm(parentNode, tokens, index+2)
+		const funcNode   = findNearestNode(parentNode, NodeType.function)
+		const returnNode = makeNode(parentNode, NodeType.return, funcNode.value, funcNode.dataType, t0)
 
-		index = parseExpression(returnNode, tokens, index+1)
+		if ( isPunctuation(t1, ';') )
+			index += 2
+		else
+			index = parseExpression(returnNode, tokens, index+1)
 
 		const tk = tokens[index]
 		if (! isPunctuation(tk, '}') )
@@ -414,8 +424,8 @@ function parseForm(parentNode, tokens, index)
 		return parseForm(parentNode, tokens, index)
 	}
 
-	// break    index?;}
-	// continue index?;}
+	// break    index?;
+	// continue index?;
 	if ( isKeyword(t0, 'break') || isKeyword(t0, 'continue') ) {
 		const command = t0.value === 'break' ? NodeType.break : NodeType.continue
 
@@ -772,6 +782,35 @@ function parseNumber(parentNode, token)
 }
 
 /**
+ * Finds the nearest node of a given type.
+ *
+ * @param {Node|null} parentNode
+ * @param {NodeType}  nodeType
+ *
+ * @return {Node|null}
+ */
+function findNearestNode(parentNode, nodeType)
+{
+	if (parentNode === null || parentNode.type === nodeType)
+		return parentNode
+
+	for (const node of parentNode.nodes) {
+		if (variableTypes.includes(node.type) && node.type === nodeType)
+			return node
+
+		// Function parameter
+		if (node.type === NodeType.funcParams) {
+			for (const param of node.nodes) {
+				if (node.type === nodeType)
+					return param
+			}
+		}
+	}
+
+	return findNearestNode(parentNode.parent, nodeType)
+}
+
+/**
  * Searches a variable within current or the parent nodes.
  *
  * @param {Node|null} parentNode
@@ -782,13 +821,6 @@ function parseNumber(parentNode, token)
 function lookup(parentNode, varName)
 {
 	if (parentNode === null) return null
-
-	/** @type {NodeType[]} */
-	const variableTypes = [
-		NodeType.localVar,  NodeType.localConst,
-		NodeType.globalVar, NodeType.globalConst,
-		NodeType.function
-	]
 
 	for (const node of parentNode.nodes) {
 		if (variableTypes.includes(node.type) && node.value === varName)
