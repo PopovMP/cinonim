@@ -575,14 +575,17 @@ function parseForm(parentNode, tokens, index)
 	// Assignment
 	// foo = expression;
 	if (isWord(t0) ) {
-		if (! isOperator(t1, '='))
-			throw new Error(`[${t1.line+1}, ${t1.column+1}] Wrong symbol in assignment. Expected "=" but got: ${t1.value}`)
-
-		index = parseAssignment(parentNode, tokens, index)
-
-		return parseForm(parentNode, tokens, index)
+		if (isOperator(t1,  '=') ||
+			isOperator(t1, '+=') ||
+			isOperator(t1, '-=') ||
+			isOperator(t1, '*=') ||
+			isOperator(t1, '/=') ||
+			isOperator(t1, '%=')) {
+			index = parseAssignment(parentNode, tokens, index)
+			return parseForm(parentNode, tokens, index)
+		}
+		throw new Error(`[${t0.line+1}, ${t0.column+1}] Unrecognised symbol in assignment:  ${t0.value}`)
 	}
-
 	throw new Error(`[${t0.line+1}, ${t0.column+1}] Unrecognised symbol in ${parentNode.type}:  ${t0.value}`)
 }
 
@@ -602,6 +605,8 @@ function parseForm(parentNode, tokens, index)
 function parseAssignment(parentNode, tokens, index)
 {
 	const t0 = tokens[index]
+	const t1 = tokens[index+1]
+
 	if (! isWord(t0) )
 		throw new Error(`[${t0.line+1}, ${t0.column+1}] Wrong symbol in assignment. Expected a variable name but got: ${t0.value}`)
 
@@ -615,10 +620,19 @@ function parseAssignment(parentNode, tokens, index)
 	const nodeType = varNode.type === NodeType.globalVar ? NodeType.globalSet : NodeType.localSet
 	const varSet   = makeNode(parentNode, nodeType, varNode.value, varNode.dataType, t0)
 
-	index = parseExpression(varSet, tokens, index+2)
+	if (isOperator(t1, '=')) {
+		index = parseExpression(varSet, tokens, index + 2)
 
-	if (isPunctuation(tokens[index-1], ','))
-		return parseAssignment(parentNode, tokens, index)
+		if (isPunctuation(tokens[index - 1], ','))
+			return parseAssignment(parentNode, tokens, index)
+	}
+	else if (t1.type === TokenType.operator && ['+=', '-=', '*=', '/=', '%='].includes(t1.value)) {
+		const exprSet = makeNode(varSet, NodeType.expression, '', varNode.dataType, t1)
+		makeNode(exprSet, NodeType.localVar, varNode.value, varNode.dataType, varNode.token)
+		const rhsExpr = makeNode(exprSet, NodeType.expression, '', varNode.dataType, t1)
+		index = parseExpression(rhsExpr, tokens, index + 2)
+		makeNode(exprSet, NodeType.operator, t1.value[0], varNode.dataType, t1)
+	}
 
 	return index
 }
