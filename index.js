@@ -734,9 +734,13 @@ function parseExpressionChain(parentNode, tokens, index)
 		if (isPunctuation(t1, ')'))
 			return parseExpressionChain(parentNode, tokens, index)
 
-		do {
+		const [funcParams] = funcNode.nodes
+		for (const param of funcParams.nodes) {
+			// Temp assign the data type of the parameter to set the underlying expression properly
+			funcCall.dataType = param.dataType
 			index = parseExpression(funcCall, tokens, index)
-		} while(isPunctuation(tokens[index-1], ','))
+		}
+		funcCall.dataType = funcNode.dataType
 
 		return parseExpressionChain(parentNode, tokens, index)
 	}
