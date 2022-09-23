@@ -42,13 +42,13 @@ module module
             localVar b: f64
             localSet a: i32
                 expression: i32
-                    localVar a: i32
+                    localGet a: i32
                     expression: i32
                         number -42: i32
                     operator -: i32
             localSet a: i32
                 expression: i32
-                    localVar a: i32
+                    localGet a: i32
                     expression: i32
                         globalGet ig: i32
                     operator +: i32
@@ -60,7 +60,7 @@ module module
                 globalGet ig: i32
             localSet a: i32
                 expression: i32
-                    localVar a: i32
+                    localGet a: i32
                     expression: i32
                         number -3: i32
                         operator +: i32

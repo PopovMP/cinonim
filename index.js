@@ -627,8 +627,9 @@ function parseAssignment(parentNode, tokens, index)
 			return parseAssignment(parentNode, tokens, index)
 	}
 	else if (t1.type === TokenType.operator && ['+=', '-=', '*=', '/=', '%='].includes(t1.value)) {
+		const lookupType = varNode.type === NodeType.globalVar ? NodeType.globalGet : NodeType.localGet
 		const exprSet = makeNode(varSet, NodeType.expression, '', varNode.dataType, t1)
-		makeNode(exprSet, NodeType.localVar, varNode.value, varNode.dataType, varNode.token)
+		makeNode(exprSet, lookupType, varNode.value, varNode.dataType, varNode.token)
 		const rhsExpr = makeNode(exprSet, NodeType.expression, '', varNode.dataType, t1)
 		index = parseExpression(rhsExpr, tokens, index + 2)
 		makeNode(exprSet, NodeType.operator, t1.value[0], varNode.dataType, t1)
