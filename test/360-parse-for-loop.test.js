@@ -1,51 +1,48 @@
 'use strict'
 
-const {strictEqual} = require('assert')
-
-const {tokenize, clean} = require('@popovmp/tokenizer')
-const {describe, it}    = require('@popovmp/mocha-tiny')
-
+const {strictEqual}         = require('assert')
+const {tokenize, clean}     = require('@popovmp/tokenizer')
+const {describe, it}        = require('@popovmp/mocha-tiny')
 const {parse, stringifyAst} = require('../index.js')
 
-/**
- * Parses source code to Nodes
- * @param {string} src
- *
- * @return {Node}
- */
-function parseModule(src)
-{
-	const tokens  = tokenize(src)
-	const cleaned = clean(tokens)
-	return parse(cleaned)
-}
-
-describe('parse `for` loop', () => {
-
-	it('for loop', () => {
-		const src = '' +
-`int sum(const int max) {
-	int i;
-	int res;
-
-	res = 0;
-	for (i = 0; i < max; i = i + 1) {
-		res = res + i;
+const src = `
+	void foo() {
+		int i, j;
+		
+		for (;;) { break; }
+		for (i = 0; ;i += 1) { break; }
+		for (i = 0; i < 10; i += 1) { }
+		for (i = 0, j = 10; i < 10; i += 1, j -= 1) { }
 	}
+`
 
-	return res;
-}`
-		const str = stringifyAst( parseModule(src) )
-		const expected = '' +
-`module module
-    function sum: i32
-        funcParams sum
-            localConst max: i32
-        funcBody sum: i32
+const expected = `
+module module
+    function foo: void
+        funcParams foo
+        funcBody foo: void
             localVar i: i32
-            localVar res: i32
-            localSet res: i32
-                number 0: i32
+            localVar j: i32
+            for
+                statement
+                condition: i32
+                statement
+                loopBody
+                    break 0
+            for
+                statement
+                    localSet i: i32
+                        number 0: i32
+                condition: i32
+                statement
+                    localSet i: i32
+                        expression: i32
+                            localGet i: i32
+                            expression: i32
+                                number 1: i32
+                            operator +: i32
+                loopBody
+                    break 0
             for
                 statement
                     localSet i: i32
@@ -53,22 +50,46 @@ describe('parse `for` loop', () => {
                 condition: i32
                     expression: i32
                         localGet i: i32
-                        localGet max: i32
+                        number 10: i32
                         operator <: i32
                 statement
                     localSet i: i32
                         expression: i32
                             localGet i: i32
-                            number 1: i32
+                            expression: i32
+                                number 1: i32
                             operator +: i32
                 loopBody
-                    localSet res: i32
+            for
+                statement
+                    localSet i: i32
+                        number 0: i32
+                    localSet j: i32
+                        number 10: i32
+                condition: i32
+                    expression: i32
+                        localGet i: i32
+                        number 10: i32
+                        operator <: i32
+                statement
+                    localSet i: i32
                         expression: i32
-                            localGet res: i32
                             localGet i: i32
+                            expression: i32
+                                number 1: i32
                             operator +: i32
-            return sum: i32
-                localGet res: i32`
-		strictEqual(str, expected)
+                    localSet j: i32
+                        expression: i32
+                            localGet j: i32
+                            expression: i32
+                                number 1: i32
+                            operator -: i32
+                loopBody
+`
+
+describe('assignment', () => {
+	it('parses assignment', () => {
+		const actual = '\n' + stringifyAst(parse(clean(tokenize(src)))) + '\n'
+		strictEqual(actual, expected)
 	})
 })

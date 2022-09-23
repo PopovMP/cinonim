@@ -575,17 +575,14 @@ function parseForm(parentNode, tokens, index)
 	// Assignment
 	// foo = expression;
 	if (isWord(t0) ) {
-		if (isOperator(t1,  '=') ||
-			isOperator(t1, '+=') ||
-			isOperator(t1, '-=') ||
-			isOperator(t1, '*=') ||
-			isOperator(t1, '/=') ||
-			isOperator(t1, '%=')) {
+		if (t1.type === TokenType.operator && ['=', '+=', '-=', '*=', '/=', '%='].includes(t1.value)) {
 			index = parseAssignment(parentNode, tokens, index)
 			return parseForm(parentNode, tokens, index)
 		}
+
 		throw new Error(`[${t0.line+1}, ${t0.column+1}] Unrecognised symbol in assignment:  ${t0.value}`)
 	}
+
 	throw new Error(`[${t0.line+1}, ${t0.column+1}] Unrecognised symbol in ${parentNode.type}:  ${t0.value}`)
 }
 
@@ -622,9 +619,6 @@ function parseAssignment(parentNode, tokens, index)
 
 	if (isOperator(t1, '=')) {
 		index = parseExpression(varSet, tokens, index + 2)
-
-		if (isPunctuation(tokens[index - 1], ','))
-			return parseAssignment(parentNode, tokens, index)
 	}
 	else if (t1.type === TokenType.operator && ['+=', '-=', '*=', '/=', '%='].includes(t1.value)) {
 		const lookupType = varNode.type === NodeType.globalVar ? NodeType.globalGet : NodeType.localGet
@@ -634,6 +628,9 @@ function parseAssignment(parentNode, tokens, index)
 		index = parseExpression(rhsExpr, tokens, index + 2)
 		makeNode(exprSet, NodeType.operator, t1.value[0], varNode.dataType, t1)
 	}
+
+	if (isPunctuation(tokens[index - 1], ','))
+		return parseAssignment(parentNode, tokens, index)
 
 	return index
 }
