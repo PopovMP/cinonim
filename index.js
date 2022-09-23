@@ -255,24 +255,23 @@ function parseModule(moduleNode, tokens, index, )
 	const t1 = tokens[index+1]
 	const t2 = tokens[index+2]
 	const t3 = tokens[index+3]
-	const t4 = tokens[index+4]
 
 	// Global variable
 	// int foo = 42;
 	if (isDataType(t0) && isWord(t1) && isOperator(t2, '=')) {
 		const globalVar = makeNode(moduleNode, NodeType.globalVar, t1.value, dataTypeMap[t0.value], t0)
-		parseNumber(globalVar, t3)
+		index = parseExpressionChain(globalVar, tokens, index+3)
 
-		return parseModule(moduleNode, tokens, index+5)
+		return parseModule(moduleNode, tokens, index)
 	}
 
 	// Global constant
 	// const int foo = 42;
 	if (isKeyword(t0, 'const') && isDataType(t1) && isWord(t2) && isOperator(t3, '=')) {
 		const globalConst = makeNode(moduleNode, NodeType.globalConst, t2.value, dataTypeMap[t1.value], t0)
-		parseNumber(globalConst, t4)
+		index = parseExpressionChain(globalConst, tokens, index+4)
 
-		return parseModule(moduleNode, tokens, index+6)
+		return parseModule(moduleNode, tokens, index)
 	}
 
 	// Function definition
@@ -677,6 +676,20 @@ function parseExpressionChain(parentNode, tokens, index)
 		const openParen = makeNode(parentNode, NodeType.expression, '', parentNode.dataType, t0)
 		index = parseExpression(openParen, tokens, index+1)
 		return parseExpressionChain(parentNode, tokens, index)
+	}
+
+	// Prefix -
+	if (isOperator(t0, '-') && isNumber(t1)) {
+		const tPrev = tokens[index-1]
+		if (tPrev.type === TokenType.operator || isPunctuation(tPrev, '(') || isKeyword(tPrev, 'return')) {
+			if (!isOperator(tPrev, '++') && !isOperator(tPrev, '--')) {
+				// Negative number
+				t0.value = ''
+				t1.value = '-' + t1.value
+				parseNumber(parentNode, t1)
+				return parseExpressionChain(parentNode, tokens, index+2)
+			}
+		}
 	}
 
 	// Number
