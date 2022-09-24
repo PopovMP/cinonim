@@ -12,7 +12,7 @@ const src = `
 		for (;;) { break; }
 		for (i = 0; ;i += 1) { break; }
 		for (i = 0; i < 10; i += 1) { }
-		for (i = 0, j = 10; i < 10; i += 1, j -= 1) { }
+		for (i = 0, j = 10; i < 10; i += 1, j -= 1) i += j;
 	}
 `
 
@@ -85,6 +85,12 @@ module module
                                 number 1: i32
                             operator -: i32
                 loopBody
+                    localSet i: i32
+                        expression: i32
+                            localGet i: i32
+                            expression: i32
+                                localGet j: i32
+                            operator +: i32
 `
 
 describe('assignment', () => {

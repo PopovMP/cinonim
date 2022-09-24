@@ -288,7 +288,7 @@ function parseModule(moduleNode, tokens, index, )
 		const funcBody   = makeNode(funcNode,   NodeType.funcBody,   funcName, dataType)
 
 		index = parseFuncParams(funcParams, tokens, index+3)
-		index = parseFuncBody(funcBody, tokens, index+1)
+		index = parseBlock(funcBody, tokens, index)
 
 		return parseModule(moduleNode, tokens, index)
 	}
@@ -328,7 +328,7 @@ function parseModule(moduleNode, tokens, index, )
  * @param {Token[]} tokens
  * @param {number}  index - current token index
  *
- * @return {number} - last consumed token index
+ * @return {number} - index of the next token
  */
 function parseFuncParams(funcParams, tokens, index)
 {
@@ -350,61 +350,35 @@ function parseFuncParams(funcParams, tokens, index)
 		}
 	}
 
-	// eats last ")"
 	return index+1
 }
 
 /**
- * Parses a function body
- *
- * @param {Node}    funcBody
- * @param {Token[]} tokens
- * @param {number}  index
- *
- * @return {number} - end index
- */
-function parseFuncBody(funcBody, tokens, index)
-{
-	const t0 = tokens[index]
-	const t1 = tokens[index+1]
-
-	if (isPunctuation(t0, '}'))
-		return index + 1
-
-	// Local declaration
-	// int foo;
-	if (isDataType(t0) && isWord(t1) ) {
-		const dataType = dataTypeMap[t0.value]
-		do {
-			const varToken = tokens[index+1]
-			const varName  = varToken.value
-			makeNode(funcBody, NodeType.localVar, varName, dataType, varToken)
-			index += 2
-		} while (isPunctuation(tokens[index], ','))
-
-		return parseFuncBody(funcBody, tokens, index+1)
-	}
-
-	return parseForm(funcBody, tokens, index)
-}
-
-/**
- * Parses a form of multiple statements.
- * A form ends with "}"
+ * Parses a single statement or a block of multiple statements.
+ * A block starts with "{" and ends with "}".
  *
  * @param {Node}    parentNode
  * @param {Token[]} tokens
- * @param {number}  index
+ * @param {number}  index - index of the first token to parse
  *
- * @return {number} - endIndex
+ * @return {number} - index of the next token
  */
-function parseForm(parentNode, tokens, index)
+function parseBlock(parentNode, tokens, index)
 {
-	while(! isPunctuation(tokens[index], '}')) {
-		index = parseStatement(parentNode, tokens, index)
+	const t0 = tokens[index]
+
+	// Parse a block of code
+	if (isPunctuation(t0, '{')) {
+		index += 1
+
+		while (! isPunctuation(tokens[index], '}'))
+			index = parseStatement(parentNode, tokens, index)
+
+		return index+1
 	}
 
-	return index+1
+	// Parse a single statement
+	return parseStatement(parentNode, tokens, index)
 }
 
 /**
@@ -422,6 +396,29 @@ function parseStatement(parentNode, tokens, index)
 	const t1 = tokens[index+1]
 	const t2 = tokens[index+2]
 
+	// Local declaration
+	// int foo;
+	if (isDataType(t0) && isWord(t1) ) {
+		const dataType = dataTypeMap[t0.value]
+		do {
+			// Check if the declaration is directly in a function body
+			if (parentNode.type !== NodeType.funcBody)
+				throw new Error(`[${t1.line+1}, ${t1.column+1}] Local variables must be declared directly in a function body: ${t1.value}`)
+
+			// Check if the declaration is in the beginning of the function body
+			const prevChildNode = parentNode.nodes[parentNode.nodes.length-1]
+			if (prevChildNode !== undefined && prevChildNode.type !== NodeType.localVar)
+				throw new Error(`[${t1.line+1}, ${t1.column+1}] Local variables must be declared in the beginning of a function body: ${t1.value}`)
+
+			const varToken = tokens[index+1]
+			const varName  = varToken.value
+			makeNode(parentNode, NodeType.localVar, varName, dataType, varToken)
+			index += 2
+		} while (isPunctuation(tokens[index], ','))
+
+		return index+1
+	}
+
 	// return expression?;
 	// return
 	//    \-- expression
@@ -435,7 +432,7 @@ function parseStatement(parentNode, tokens, index)
 			index = parseExpression(returnNode, tokens, index+1)
 
 		const tk = tokens[index]
-		if (! isPunctuation(tk, '}'))
+		if (tk !== undefined && ! isPunctuation(tk, '}'))
 			throw new Error(`[${tk.line+1}, ${tk.column+1}] Found symbols after function return: ${tk.value}`)
 
 		return index
@@ -465,7 +462,7 @@ function parseStatement(parentNode, tokens, index)
 		return index
 	}
 
-	// for (assignment; condition; assignment) { FORM }
+	// for (assignment; condition; assignment) <block of statements>
 	// for
 	//    +-- statement
 	//    +-- condition
@@ -498,10 +495,10 @@ function parseStatement(parentNode, tokens, index)
 
 		const loopBody = makeNode(forNode, NodeType.loopBody, '', DataType.na, tokens[index])
 
-		return parseForm(loopBody, tokens, index+1)
+		return parseBlock(loopBody, tokens, index)
 	}
 
-	// do { FORM } while (condition);
+	// do { statement* } while (condition);
 	// do
 	//    +-- loopBody
 	//    \-- condition
@@ -512,7 +509,7 @@ function parseStatement(parentNode, tokens, index)
 		const doNode   = makeNode(parentNode, NodeType.do,       '', DataType.na, t0)
 		const loopBody = makeNode(doNode,     NodeType.loopBody, '', DataType.na, t2)
 
-		index = parseForm(loopBody, tokens, index+2)
+		index = parseBlock(loopBody, tokens, index+1)
 
 		const tk0 = tokens[index]
 		if (! isKeyword(tk0, 'while'))
@@ -530,7 +527,7 @@ function parseStatement(parentNode, tokens, index)
 		return index+1
 	}
 
-	// while (condition) { FORM }
+	// while (condition) <block of statements>
 	// while
 	//    +-- condition
 	//    \-- loopBody
@@ -549,11 +546,11 @@ function parseStatement(parentNode, tokens, index)
 
 		const loopBody = makeNode(whileNode, NodeType.loopBody, '', DataType.na, tk0)
 
-		return parseForm(loopBody, tokens, index+1)
+		return parseBlock(loopBody, tokens, index)
 	}
 
-	// if (condition) { FORM }
-	// if (condition) { FORM } else { FORM }
+	// if (condition) <block of statements>
+	// if (condition) <block of statements> else <block of statements>
 	// if
 	//    +-- condition
 	//    +-- then
@@ -571,17 +568,12 @@ function parseStatement(parentNode, tokens, index)
 			throw new Error(`[${tk0.line+1}, ${tk0.column+1}] Wrong symbol in "if". Expected "{" but got: ${tk0.value}`)
 
 		const thenNode = makeNode(ifNode, NodeType.then, '', DataType.na, tokens[index])
-		index = parseForm(thenNode, tokens, index+1)
+		index = parseBlock(thenNode, tokens, index)
 
 		const tk1 = tokens[index]
 		if (isKeyword(tk1, 'else')) {
 			const elseNode = makeNode(ifNode, NodeType.else, '', DataType.na, tk1)
-
-			const tk2 = tokens[index+1]
-			if (! isPunctuation(tk2, '{'))
-				throw new Error(`[${tk2.line+1}, ${tk2.column+1}] Wrong symbol in "else". Expected "{" but got: ${tk2.value}`)
-
-			index = parseForm(elseNode, tokens, index+2)
+			index = parseBlock(elseNode, tokens, index+1)
 		}
 
 		return index
@@ -603,7 +595,7 @@ function parseStatement(parentNode, tokens, index)
 /**
  * Parses a variable assignment
  *
- * foo = expression; // Statement in FORM
+ * foo = expression; // Statement
  * foo = expression) // increment part of `for` loop
  * The terminal punctuation is determined (and consumed) by `parseExpression`
  *

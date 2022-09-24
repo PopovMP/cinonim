@@ -74,9 +74,9 @@ describe('func declaration', () => {
 		const src = `
 		int    foo() { }
 		double bar(int a) { }
-		void   baz(float a, double b) { }
+		double sum(double m, double n) return m + n;
 		`
-		const [funcFoo, funcBar, funcBaz] = parseModule(src)
+		const [funcFoo, funcBar, funcSum] = parseModule(src)
 
 		strictEqual(typeof funcFoo,   'object',           'funcFoo must be an object')
 		strictEqual(funcFoo.type,     NodeType.function,  'funcFoo.type must be NodeType.function')
@@ -88,9 +88,9 @@ describe('func declaration', () => {
 		strictEqual(funcBar.value,    'bar',              'funcBar.value must be "bar"')
 		strictEqual(funcBar.dataType, DataType.f64,       'funcBar.dataType must be f64')
 
-		strictEqual(typeof funcBaz,   'object',           'funcBaz must be an object')
-		strictEqual(funcBaz.type,     NodeType.function,  'funcBaz.type must be NodeType.function')
-		strictEqual(funcBaz.value,    'baz',              'funcBaz.value must be "baz"')
-		strictEqual(funcBaz.dataType, DataType.void,      'funcBaz.dataType must be void')
+		strictEqual(typeof funcSum,   'object',           'funcSum must be an object')
+		strictEqual(funcSum.type,     NodeType.function,  'funcSum.type must be NodeType.function')
+		strictEqual(funcSum.value,    'sum',              'funcSum.value must be "sum"')
+		strictEqual(funcSum.dataType, DataType.f64,       'funcSum.dataType must be f64')
 	})
 })

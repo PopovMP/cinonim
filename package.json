@@ -1,6 +1,6 @@
 {
   "name": "@popovmp/cinonim-parser",
-  "version": "1.9.3",
+  "version": "1.10.0",
   "description": "Parser for Cinonim - a C like language.",
   "main": "index.js",
   "repository": {
