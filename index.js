@@ -389,7 +389,8 @@ function parseFuncBody(funcBody, tokens, index)
 }
 
 /**
- * Parses a form: assignment | loop | block | if | funcCall
+ * Parses a form of multiple statements.
+ * A form ends with "}"
  *
  * @param {Node}    parentNode
  * @param {Token[]} tokens
@@ -399,11 +400,27 @@ function parseFuncBody(funcBody, tokens, index)
  */
 function parseForm(parentNode, tokens, index)
 {
+	while(! isPunctuation(tokens[index], '}')) {
+		index = parseStatement(parentNode, tokens, index)
+	}
+
+	return index+1
+}
+
+/**
+ * Parses a single statement
+ *
+ * @param {Node}    parentNode
+ * @param {Token[]} tokens
+ * @param {number}  index - index of the first token to parse
+ *
+ * @return {number} - index of the next token
+ */
+function parseStatement(parentNode, tokens, index)
+{
 	const t0 = tokens[index]
 	const t1 = tokens[index+1]
 	const t2 = tokens[index+2]
-
-	if (isPunctuation(t0, '}')) return index+1
 
 	// return expression?;
 	// return
@@ -421,7 +438,7 @@ function parseForm(parentNode, tokens, index)
 		if (! isPunctuation(tk, '}'))
 			throw new Error(`[${tk.line+1}, ${tk.column+1}] Found symbols after function return: ${tk.value}`)
 
-		return parseForm(parentNode, tokens, index)
+		return index
 	}
 
 	// break    index?;
@@ -445,7 +462,7 @@ function parseForm(parentNode, tokens, index)
 		if (! isPunctuation(tk, '}'))
 			throw new Error(`[${tk.line+1}, ${tk.column+1}] Found symbols after ${command}: ${tk.value}`)
 
-		return parseForm(parentNode, tokens, index)
+		return index
 	}
 
 	// for (assignment; condition; assignment) { FORM }
@@ -480,9 +497,8 @@ function parseForm(parentNode, tokens, index)
 			index = parseAssignment(increment, tokens, index)
 
 		const loopBody = makeNode(forNode, NodeType.loopBody, '', DataType.na, tokens[index])
-		index = parseForm(loopBody, tokens, index+1)
 
-		return parseForm(parentNode, tokens, index)
+		return parseForm(loopBody, tokens, index+1)
 	}
 
 	// do { FORM } while (condition);
@@ -508,9 +524,10 @@ function parseForm(parentNode, tokens, index)
 
 		index += 2
 		const condition = makeNode(doNode, NodeType.condition, '', DataType.i32, tokens[index])
+
 		index = parseExpression(condition, tokens, index)
 
-		return parseForm(parentNode, tokens, index+1)
+		return index+1
 	}
 
 	// while (condition) { FORM }
@@ -532,9 +549,7 @@ function parseForm(parentNode, tokens, index)
 
 		const loopBody = makeNode(whileNode, NodeType.loopBody, '', DataType.na, tk0)
 
-		index = parseForm(loopBody, tokens, index+1)
-
-		return parseForm(parentNode, tokens, index)
+		return parseForm(loopBody, tokens, index+1)
 	}
 
 	// if (condition) { FORM }
@@ -569,15 +584,14 @@ function parseForm(parentNode, tokens, index)
 			index = parseForm(elseNode, tokens, index+2)
 		}
 
-		return parseForm(parentNode, tokens, index)
+		return index
 	}
 
 	// Assignment
 	// foo = expression;
-	if (isWord(t0) ) {
+	if (isWord(t0)) {
 		if (t1.type === TokenType.operator && ['=', '+=', '-=', '*=', '/=', '%='].includes(t1.value)) {
-			index = parseAssignment(parentNode, tokens, index)
-			return parseForm(parentNode, tokens, index)
+			return parseAssignment(parentNode, tokens, index)
 		}
 
 		throw new Error(`[${t0.line+1}, ${t0.column+1}] Unrecognised symbol in assignment:  ${t0.value}`)
@@ -595,9 +609,9 @@ function parseForm(parentNode, tokens, index)
  *
  * @param {Node}    parentNode
  * @param {Token[]} tokens
- * @param {number}  index
+ * @param {number}  index - index of the first token to parse
  *
- * @return {number} - the index of the terminal punctuation
+ * @return {number} - the index after the parsed tokens
  */
 function parseAssignment(parentNode, tokens, index)
 {
