@@ -516,7 +516,7 @@ function parseStatement(parentNode, tokens, index)
 
 		index = parseExpression(condition, tokens, index)
 
-		return index+1
+		return index+1 // Eats last ";"
 	}
 
 	// while (condition) <block of statements>
@@ -561,66 +561,22 @@ function parseStatement(parentNode, tokens, index)
 		return index
 	}
 
+	// Function call
+	// foo(bar, ...);
+	if (isWord(t0) && isPunctuation(t1, '(')) {
+		return parseFunctionCall(parentNode, tokens, index) + 1 // Eats last ";"
+	}
+
 	// Assignment
 	// foo = expression;
 	if (isWord(t0)) {
-		if (t1.type === TokenType.operator && ['=', '+=', '-=', '*=', '/=', '%='].includes(t1.value)) {
+		if (t1.type === TokenType.operator && ['=', '+=', '-=', '*=', '/=', '%='].includes(t1.value))
 			return parseAssignment(parentNode, tokens, index)
-		}
 
 		throw new Error(`[${t0.line+1}, ${t0.column+1}] Unrecognised symbol in assignment:  ${t0.value}`)
 	}
 
 	throw new Error(`[${t0.line+1}, ${t0.column+1}] Unrecognised symbol in ${parentNode.type}:  ${t0.value}`)
-}
-
-/**
- * Parses a variable assignment
- *
- * foo = expression; // Statement
- * foo = expression) // increment part of `for` loop
- * The terminal punctuation is determined (and consumed) by `parseExpression`
- *
- * @param {Node}    parentNode
- * @param {Token[]} tokens
- * @param {number}  index - index of the first token to parse
- *
- * @return {number} - the index after the parsed tokens
- */
-function parseAssignment(parentNode, tokens, index)
-{
-	const t0 = tokens[index]
-	const t1 = tokens[index+1]
-
-	if (! isWord(t0) )
-		throw new Error(`[${t0.line+1}, ${t0.column+1}] Wrong symbol in assignment. Expected a variable name but got: ${t0.value}`)
-
-	const varName = t0.value
-	const varNode = lookup(parentNode, varName)
-	if (varNode === null)
-		throw new Error(`[${t0.line+1}, ${t0.column+1}] Cannot find a variable:  ${varName}`)
-	if (varNode.type === NodeType.localConst || varNode.type === NodeType.globalConst)
-		throw new Error(`[${t0.line+1}, ${t0.column+1}] Cannot assign value to a constant:  ${varName}`)
-
-	const nodeType = varNode.type === NodeType.globalVar ? NodeType.globalSet : NodeType.localSet
-	const varSet   = makeNode(parentNode, nodeType, varNode.value, varNode.dataType, t0)
-
-	if (isOperator(t1, '=')) {
-		index = parseExpression(varSet, tokens, index + 2)
-	}
-	else if (t1.type === TokenType.operator && ['+=', '-=', '*=', '/=', '%='].includes(t1.value)) {
-		const lookupType = varNode.type === NodeType.globalVar ? NodeType.globalGet : NodeType.localGet
-		const exprSet = makeNode(varSet, NodeType.expression, '', varNode.dataType, t1)
-		makeNode(exprSet, lookupType, varNode.value, varNode.dataType, varNode.token)
-		const rhsExpr = makeNode(exprSet, NodeType.expression, '', varNode.dataType, t1)
-		index = parseExpression(rhsExpr, tokens, index + 2)
-		makeNode(exprSet, NodeType.operator, t1.value[0], varNode.dataType, t1)
-	}
-
-	if (isPunctuation(tokens[index - 1], ','))
-		return parseAssignment(parentNode, tokens, index)
-
-	return index
 }
 
 /**
@@ -709,27 +665,7 @@ function parseExpressionChain(parentNode, tokens, index)
 	// Function call
 	// foo(bar, ...)
 	if (isWord(t0) && isPunctuation(t1, '(')) {
-		const funcName = t0.value
-		const funcNode = lookup(parentNode, funcName)
-
-		if (funcNode === null || funcNode.type !== NodeType.function)
-			throw new Error(`[${t0.line+1}, ${t0.column+1}] Cannot find a function: ${funcName}`)
-
-		const funcCall = makeNode(parentNode, NodeType.functionCall, t0.value, funcNode.dataType, t0)
-		index += 2
-
-		// Void call
-		if (isPunctuation(t1, ')'))
-			return parseExpressionChain(parentNode, tokens, index)
-
-		const [funcParams] = funcNode.nodes
-		for (const param of funcParams.nodes) {
-			// Temp assign the data type of the parameter to set the underlying expression properly
-			funcCall.dataType = param.dataType
-			index = parseExpression(funcCall, tokens, index)
-		}
-		funcCall.dataType = funcNode.dataType
-
+		index = parseFunctionCall(parentNode, tokens, index)
 		return parseExpressionChain(parentNode, tokens, index)
 	}
 
@@ -749,6 +685,92 @@ function parseExpressionChain(parentNode, tokens, index)
 	}
 
 	throw new Error(`[${t0.line+1}, ${t0.column+1}] Unrecognised symbol in ${parentNode.type}:  ${t0.value}`)
+}
+
+/**
+ * Parses a function call
+ *
+ * @param {Node}    parentNode
+ * @param {Token[]} tokens
+ * @param {number}  index - index of the first token to parse
+ *
+ * @return {number} - index of the next token
+ */
+function parseFunctionCall(parentNode, tokens, index)
+{
+	const t0 = tokens[index]
+	const t1 = tokens[index+1]
+
+	const funcName = t0.value
+	const funcNode = lookup(parentNode, funcName)
+
+	if (funcNode === null || funcNode.type !== NodeType.function)
+		throw new Error(`[${t0.line+1}, ${t0.column+1}] Cannot find a function: ${funcName}`)
+
+	const funcCall = makeNode(parentNode, NodeType.functionCall, t0.value, funcNode.dataType, t0)
+	index += 2
+
+	// Void call
+	if (! isPunctuation(t1, ')')) {
+		const funcParams = funcNode.nodes[0]
+		for (const param of funcParams.nodes) {
+			// Temp assign the data type of the parameter to set the underlying expression properly
+			funcCall.dataType = param.dataType
+			index = parseExpression(funcCall, tokens, index)
+		}
+		funcCall.dataType = funcNode.dataType
+	}
+
+	return index
+}
+
+/**
+ * Parses a variable assignment
+ *
+ * foo = expression; // Statement
+ * foo = expression) // increment part of `for` loop
+ * The terminal punctuation is determined (and consumed) by `parseExpression`
+ *
+ * @param {Node}    parentNode
+ * @param {Token[]} tokens
+ * @param {number}  index - index of the first token to parse
+ *
+ * @return {number} - the index after the parsed tokens
+ */
+function parseAssignment(parentNode, tokens, index)
+{
+	const t0 = tokens[index]
+	const t1 = tokens[index+1]
+
+	if (! isWord(t0))
+		throw new Error(`[${t0.line+1}, ${t0.column+1}] Wrong symbol in assignment. Expected a variable name but got: ${t0.value}`)
+
+	const varName = t0.value
+	const varNode = lookup(parentNode, varName)
+	if (varNode === null)
+		throw new Error(`[${t0.line+1}, ${t0.column+1}] Cannot find a variable:  ${varName}`)
+	if (varNode.type === NodeType.localConst || varNode.type === NodeType.globalConst)
+		throw new Error(`[${t0.line+1}, ${t0.column+1}] Cannot assign value to a constant:  ${varName}`)
+
+	const nodeType = varNode.type === NodeType.globalVar ? NodeType.globalSet : NodeType.localSet
+	const varSet   = makeNode(parentNode, nodeType, varNode.value, varNode.dataType, t0)
+
+	if (isOperator(t1, '=')) {
+		index = parseExpression(varSet, tokens, index + 2)
+	}
+	else if (t1.type === TokenType.operator && ['+=', '-=', '*=', '/=', '%='].includes(t1.value)) {
+		const lookupType = varNode.type === NodeType.globalVar ? NodeType.globalGet : NodeType.localGet
+		const exprSet    = makeNode(varSet, NodeType.expression, '', varNode.dataType, t1)
+		makeNode(exprSet, lookupType, varNode.value, varNode.dataType, varNode.token)
+		const rhsExpr = makeNode(exprSet, NodeType.expression, '', varNode.dataType, t1)
+		index = parseExpression(rhsExpr, tokens, index + 2)
+		makeNode(exprSet, NodeType.operator, t1.value[0], varNode.dataType, t1)
+	}
+
+	if (isPunctuation(tokens[index - 1], ','))
+		return parseAssignment(parentNode, tokens, index)
+
+	return index
 }
 
 /**

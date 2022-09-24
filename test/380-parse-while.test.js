@@ -8,22 +8,19 @@ const {parse, stringifyAst} = require('../index.js')
 const src = '' +
 `long fibonacci(int n)
 {
-	long curr;
-	long prev;
-	long temp;
+	long curr, prev, temp;
 
 	curr = 1;
 	prev = 1;
 
 	while (1) {
-		if (n <= 2) {
+		if (n <= 2)
 			break;
-		}
 
-		temp = curr;
-		curr = prev + curr;
-		prev = temp;
-		n    = n - 1;
+		temp  = curr;
+		curr += prev;
+		prev  = temp;
+		n    -= 1;
 	}
 
 	return curr;
@@ -33,7 +30,7 @@ const expected = '' +
 `module module
     function fibonacci: i64
         funcParams fibonacci
-            parameter n: i32
+            localVar n: i32
         funcBody fibonacci: i64
             localVar curr: i64
             localVar prev: i64
@@ -48,23 +45,28 @@ const expected = '' +
                 loopBody
                     if
                         condition: i32
-                            binaryOperator <=: i32
+                            expression: i32
                                 localGet n: i32
                                 number 2: i32
+                                operator <=: i32
                         then
                             break 0
                     localSet temp: i64
                         localGet curr: i64
                     localSet curr: i64
-                        binaryOperator +: i64
-                            localGet prev: i64
+                        expression: i64
                             localGet curr: i64
+                            expression: i64
+                                localGet prev: i64
+                            operator +: i64
                     localSet prev: i64
                         localGet temp: i64
                     localSet n: i32
-                        binaryOperator -: i32
+                        expression: i32
                             localGet n: i32
-                            number 1: i32
+                            expression: i32
+                                number 1: i32
+                            operator -: i32
             return fibonacci: i64
                 localGet curr: i64`
 
