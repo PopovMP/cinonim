@@ -539,12 +539,7 @@ function parseStatement(parentNode, tokens, index)
 		const condition = makeNode(whileNode,  NodeType.condition, '', DataType.i32, t2)
 
 		index = parseExpression(condition, tokens, index+2)
-
-		const tk0 = tokens[index]
-		if (! isPunctuation(tk0, '{'))
-			throw new Error(`[${tk0.line+1}, ${tk0.column+1}] Wrong symbol in "while". Expected "{" but got: ${tk0.value}`)
-
-		const loopBody = makeNode(whileNode, NodeType.loopBody, '', DataType.na, tk0)
+		const loopBody = makeNode(whileNode, NodeType.loopBody, '', DataType.na, tokens[index])
 
 		return parseBlock(loopBody, tokens, index)
 	}
@@ -563,16 +558,11 @@ function parseStatement(parentNode, tokens, index)
 		const condition = makeNode(ifNode,     NodeType.condition, '', DataType.i32, t2)
 		index = parseExpression(condition, tokens, index+2)
 
-		const tk0 = tokens[index]
-		if (! isPunctuation(tk0, '{'))
-			throw new Error(`[${tk0.line+1}, ${tk0.column+1}] Wrong symbol in "if". Expected "{" but got: ${tk0.value}`)
-
 		const thenNode = makeNode(ifNode, NodeType.then, '', DataType.na, tokens[index])
 		index = parseBlock(thenNode, tokens, index)
 
-		const tk1 = tokens[index]
-		if (isKeyword(tk1, 'else')) {
-			const elseNode = makeNode(ifNode, NodeType.else, '', DataType.na, tk1)
+		if (isKeyword(tokens[index], 'else')) {
+			const elseNode = makeNode(ifNode, NodeType.else, '', DataType.na, tokens[index])
 			index = parseBlock(elseNode, tokens, index+1)
 		}
 
