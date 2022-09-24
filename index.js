@@ -431,10 +431,6 @@ function parseStatement(parentNode, tokens, index)
 		else
 			index = parseExpression(returnNode, tokens, index+1)
 
-		const tk = tokens[index]
-		if (tk !== undefined && ! isPunctuation(tk, '}'))
-			throw new Error(`[${tk.line+1}, ${tk.column+1}] Found symbols after function return: ${tk.value}`)
-
 		return index
 	}
 
@@ -454,10 +450,6 @@ function parseStatement(parentNode, tokens, index)
 		else {
 			throw new Error(`[${t1.line + 1}, ${t1.column + 1}] Wrong symbol in "${t0.value}", Expected ";" or an index but got: ${t1.value}`)
 		}
-
-		const tk = tokens[index]
-		if (! isPunctuation(tk, '}'))
-			throw new Error(`[${tk.line+1}, ${tk.column+1}] Found symbols after ${command}: ${tk.value}`)
 
 		return index
 	}

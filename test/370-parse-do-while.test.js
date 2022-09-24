@@ -14,7 +14,9 @@ const src = '' +
 			break;
 		}
 		res = 7L;
-		continue;
+		
+		if (n < 5) continue;
+
 	} while (n);
 
 	return res;
@@ -38,7 +40,14 @@ const expected = '' +
                             break 0
                     localSet res: i64
                         number 7: i64
-                    continue 0
+                    if
+                        condition: i32
+                            expression: i32
+                                localGet n: i32
+                                number 5: i32
+                                operator <: i32
+                        then
+                            continue 0
                 condition: i32
                     localGet n: i32
             return foo: i64
