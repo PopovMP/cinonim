@@ -34,8 +34,7 @@ const expected = `
         (local $temp i64)
         (local.set $curr (i64.const 1))
         (local.set $prev (i64.const 1))
-        (block
-        (loop
+        (block (loop
             (br_if 1 (i32.eqz (local.get $n) (i32.const 2) (i32.gt_s)))
             (local.set $temp (local.get $curr))
             (local.set $curr (local.get $curr) (local.get $prev) (i64.add))

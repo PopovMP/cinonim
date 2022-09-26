@@ -9,8 +9,7 @@
         (local.set $sum (i64.const 0))
         (local.set $curr (i32.const 1))
         (local.set $prev (i32.const 1))
-        (block
-        (loop
+        (block (loop
             (br_if 1 (i32.eqz (local.get $curr) (global.get $MAX_FIBO) (i32.lt_s)))
             (local.set $temp (local.get $curr))
             (local.set $curr (local.get $curr) (local.get $prev) (i32.add))

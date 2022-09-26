@@ -21,12 +21,10 @@
         (local.set $palindrome (i32.const 0))
         (local.set $steps (i32.const 0))
         (local.set $a (i32.const 999))
-        (block
-        (loop
+        (block (loop
             (br_if 1 (i32.eqz (local.get $a) (i32.const 99) (i32.gt_s)))
             (local.set $b (i32.const 999))
-            (block
-            (loop
+            (block (loop
                 (br_if 1 (i32.eqz (local.get $b) (i32.const 99) (i32.gt_s)))
                 (local.set $product (local.get $a) (local.get $b) (i32.mul))
                 (local.set $steps (local.get $steps) (i32.const 1) (i32.add))

@@ -34,7 +34,7 @@ describe('Test Cinonim source code', () => {
 					return
 				}
 
-				const loadedWat = readFileSync(watFilename, {encoding: 'ascii'})
+				const loadedWat = readFileSync(watFilename, {encoding: 'ascii'}).trim()
 				strictEqual(compiledWat, loadedWat)
 			})
 		}

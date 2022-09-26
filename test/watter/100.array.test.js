@@ -32,8 +32,7 @@ const expected = `
         (local $i i32)
         (local $sum i32)
         (local.set $i (i32.const 0))
-        (block
-        (loop
+        (block (loop
             (br_if 1 (i32.eqz (local.get $i) (i32.const 100) (i32.lt_s)))
             (i32.store (i32.add (i32.const 0) (i32.shl (local.get $i) (i32.const 2))) (local.get $i) (i32.const 1) (i32.add))
             (local.set $i (local.get $i) (i32.const 1) (i32.add))
@@ -41,8 +40,7 @@ const expected = `
         ))
         (local.set $sum (i32.const 0))
         (local.set $i (i32.const 0))
-        (block
-        (loop
+        (block (loop
             (br_if 1 (i32.eqz (local.get $i) (i32.const 100) (i32.lt_s)))
             (local.set $sum (local.get $sum) (i32.load (i32.add (i32.const 0) (i32.shl (local.get $i) (i32.const 2)))) (i32.add))
             (local.set $i (local.get $i) (i32.const 1) (i32.add))

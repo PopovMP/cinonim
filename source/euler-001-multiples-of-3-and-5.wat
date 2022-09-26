@@ -6,8 +6,7 @@
         (local $n i32)
         (local.set $sum (i64.const 0))
         (local.set $n (i32.const 0))
-        (block
-        (loop
+        (block (loop
             (br_if 1 (i32.eqz (local.get $n) (global.get $MAX) (i32.lt_s)))
             (local.get $n) (i32.const 3) (i32.rem_s) (i32.const 0) (i32.eq) (local.get $n) (i32.const 5) (i32.rem_s) (i32.const 0) (i32.eq) (i32.or)
             (if (then
