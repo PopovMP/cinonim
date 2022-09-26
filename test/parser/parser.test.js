@@ -6,7 +6,6 @@ const {describe, it} = require('@popovmp/mocha-tiny')
 const {tokenize}     = require('../../lib/tokenizer')
 const {parse, stringifyAst} = require('../../lib/parser')
 
-
 describe('Parser', () => {
 	it('parses source code', () => {
 		const sourceFilename = __filename.replace('.js', '.c')

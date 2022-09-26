@@ -1,3 +1,5 @@
+double arr[100];
+
 double dataTypes(
 	const int    intPar,
 	const long   longPar,
@@ -13,6 +15,16 @@ double dataTypes(
 	longVar = ((long) intVar);
 
 	return longVar + ((double) floatPar) + doublePar;
+}
+
+double expression(float m, float n)
+{
+    float p;
+
+    p = m + 1;
+    p = m + 2 * 3 + 4 * m;
+
+    return ((double) p);
 }
 
 void forLoop()
@@ -91,4 +103,11 @@ float twoReturns(float n)
 	}
 
 	return n + 2;
+}
+
+float arrayAllocation()
+{
+    int i;
+    i = 42;
+    arr[i-1] = arr[i-2];
 }
