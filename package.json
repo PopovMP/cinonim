@@ -2,16 +2,13 @@
   "name": "@popovmp/cinonim-parser",
   "version": "1.11.0",
   "description": "Parser for Cinonim - a C like language.",
-  "main": "index.js",
+  "main": "src/index.js",
   "repository": {
     "type": "git",
     "url": "git@github.com:PopovMP/cinonim-parser.git"
   },
-  "dependencies": {
-    "@popovmp/tokenizer": "^2.1.0"
-  },
   "devDependencies": {
-    "@popovmp/mocha-tiny": "^2.3.0"
+    "@popovmp/mocha-tiny": "^3.0.0"
   },
   "scripts": {
     "test": "mocha-tiny"

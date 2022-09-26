@@ -1,0 +1,26 @@
+(module
+    (export "sumEvenFiboNumbers" (func $sumEvenFiboNumbers))
+    (global $MAX_FIBO i32 (i32.const 4000000))
+    (func $sumEvenFiboNumbers (result i64)
+        (local $sum i64)
+        (local $temp i32)
+        (local $curr i32)
+        (local $prev i32)
+        (local.set $sum (i64.const 0))
+        (local.set $curr (i32.const 1))
+        (local.set $prev (i32.const 1))
+        (block
+        (loop
+            (br_if 1 (i32.eqz (local.get $curr) (global.get $MAX_FIBO) (i32.lt_s)))
+            (local.set $temp (local.get $curr))
+            (local.set $curr (local.get $curr) (local.get $prev) (i32.add))
+            (local.set $prev (local.get $temp))
+            (local.get $curr) (i32.const 2) (i32.rem_s) (i32.const 0) (i32.eq)
+            (if (then
+                (local.set $sum (local.get $sum) (local.get $curr) (i64.extend_i32_s) (i64.add))
+            ))
+            (br 0)
+        ))
+        (local.get $sum)
+    )
+)

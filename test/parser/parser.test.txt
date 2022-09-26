@@ -1,0 +1,196 @@
+module module
+    function dataTypes: f64
+        funcParams
+            localConst intPar: i32
+            localConst longPar: i64
+            localConst floatPar: f32
+            localConst doublePar: f64
+        funcBody: f64
+            localVar intVar: i32
+            localVar longVar: i64
+            localVar floatVar: f32
+            localVar doubleVar: f64
+            localSet intVar: i32
+                localGet intPar: i32
+            localSet longVar: i64
+                expression: i64
+                    cast cast: i64
+                    localGet intVar: i32
+            return: f64
+                expression: f64
+                    localGet longVar: i64
+                    expression: f64
+                        localGet floatPar: f32
+                        cast cast: f64
+                    operator +: f64
+                    localGet doublePar: f64
+                    operator +: f64
+    function forLoop: void
+        funcParams
+        funcBody: void
+            localVar i: i32
+            localVar j: i32
+            for
+                statement
+                condition: i32
+                statement
+                loopBody
+                    break 1
+            for
+                statement
+                    localSet i: i32
+                        number 0: i32
+                condition: i32
+                statement
+                    localSet i: i32
+                        expression: i32
+                            localGet i: i32
+                            expression: i32
+                                number 1: i32
+                            operator +: i32
+                loopBody
+                    break 1
+            for
+                statement
+                    localSet i: i32
+                        number 0: i32
+                condition: i32
+                    expression: i32
+                        localGet i: i32
+                        number 10: i32
+                        operator <: i32
+                statement
+                    localSet i: i32
+                        expression: i32
+                            localGet i: i32
+                            expression: i32
+                                number 1: i32
+                            operator +: i32
+                loopBody
+            for
+                statement
+                    localSet i: i32
+                        number 0: i32
+                    localSet j: i32
+                        number 10: i32
+                condition: i32
+                    expression: i32
+                        localGet i: i32
+                        number 10: i32
+                        operator <: i32
+                statement
+                    localSet i: i32
+                        expression: i32
+                            localGet i: i32
+                            expression: i32
+                                number 1: i32
+                            operator +: i32
+                    localSet j: i32
+                        expression: i32
+                            localGet j: i32
+                            expression: i32
+                                number 1: i32
+                            operator -: i32
+                loopBody
+                    localSet i: i32
+                        expression: i32
+                            localGet i: i32
+                            expression: i32
+                                localGet j: i32
+                            operator +: i32
+    function doLoop: i64
+        funcParams
+            localVar n: i32
+        funcBody: i64
+            localVar res: i64
+            do
+                loopBody
+                    if
+                        condition: i32
+                            localGet n: i32
+                        then
+                            localSet res: i64
+                                number 42: i64
+                            break 1
+                    localSet res: i64
+                        number 7: i64
+                    if
+                        condition: i32
+                            expression: i32
+                                localGet n: i32
+                                number 5: i32
+                                operator <: i32
+                        then
+                            continue 0
+                condition: i32
+                    localGet n: i32
+            return: i64
+                localGet res: i64
+    function whileLoop: i64
+        funcParams
+            localVar n: i32
+        funcBody: i64
+            localVar curr: i64
+            localVar prev: i64
+            localVar temp: i64
+            localSet curr: i64
+                number 1: i64
+            localSet prev: i64
+                number 1: i64
+            while
+                condition: i32
+                    number 1: i32
+                loopBody
+                    if
+                        condition: i32
+                            expression: i32
+                                localGet n: i32
+                                number 2: i32
+                                operator <=: i32
+                        then
+                            break 1
+                    localSet temp: i64
+                        localGet curr: i64
+                    localSet curr: i64
+                        expression: i64
+                            localGet curr: i64
+                            expression: i64
+                                localGet prev: i64
+                            operator +: i64
+                    localSet prev: i64
+                        localGet temp: i64
+                    localSet n: i32
+                        expression: i32
+                            localGet n: i32
+                            expression: i32
+                                number 1: i32
+                            operator -: i32
+            return: i64
+                localGet curr: i64
+    function voidReturnFromBody: void
+        funcParams
+        funcBody: void
+            return: void
+    function voidReturnFromLoop: void
+        funcParams
+        funcBody: void
+            while
+                condition: i32
+                    number 1: i32
+                loopBody
+                    return: void
+    function twoReturns: f32
+        funcParams
+            localVar n: f32
+        funcBody: f32
+            while
+                condition: i32
+                    number 1: i32
+                loopBody
+                    return: f32
+                        localGet n: f32
+            return: f32
+                expression: f32
+                    localGet n: f32
+                    number 2: f32
+                    operator +: f32
