@@ -26,8 +26,8 @@ int sum100()
 
 const expected = `
 (module
-    (memory 1)
     (export "sum100" (func $sum100))
+    (memory 1)
     (func $sum100 (result i32)
         (local $i i32)
         (local $sum i32)
