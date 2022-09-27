@@ -1,33 +1,6 @@
-'use strict'
-
-const {strictEqual}  = require('assert')
-const {describe, it} = require('@popovmp/mocha-tiny')
-const {ciToWat}      = require('../../index')
-
-const src = `
-#export-func mc91 = mc91
-
-int mc91rec(int n, int c)
-{
-	if (c != 0) {
-		if (n > 100)
-			return mc91rec(n - 10, c - 1);
-
-		return mc91rec(n + 11, c + 1);
-	}
-
-	return n;
-}
-
-int mc91(int n)
-{
-	return mc91rec(n, 1);
-}
-`
-
-const expected = `
 (module
-    (export "mc91" (func $mc91))
+    (import "js" "logInt" (func $logInt (param i32)))
+    (export "runTest" (func $runTest))
     (func $mc91rec (param $n i32) (param $c i32) (result i32)
         (local.get $c) (i32.const 0) (i32.ne)
         (if (then
@@ -50,12 +23,18 @@ const expected = `
         (i32.const 1)
         (call $mc91rec)
     )
+    (func $runTest
+        (local $i i32)
+        (local $res i32)
+        (local.set $i (i32.const 90))
+        (block (loop
+            (br_if 1 (i32.eqz (local.get $i) (i32.const 120) (i32.lt_s)))
+            (local.set $res (local.get $i)
+            (call $mc91))
+            (local.get $res)
+            (call $logInt)
+            (local.set $i (local.get $i) (i32.const 1) (i32.add))
+            (br 0)
+        ))
+    )
 )
-`
-
-describe('McCarthy 91', () => {
-	it('compiles McCarthy 91 to WAT', () => {
-		const actual = '\n' + ciToWat(src) + '\n'
-		strictEqual(actual, expected)
-	})
-})

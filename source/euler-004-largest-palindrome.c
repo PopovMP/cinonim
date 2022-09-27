@@ -5,14 +5,7 @@
 //
 // Find the largest palindrome made from the product of two 3-digit numbers.
 
-// JavaScript
-// const wasmExport   = { console: { log: console.log } }
-// const wasmInstance = new WebAssembly.Instance(wasmModule, wasmExport)
-// const {largestPalindrome} = wasmInstance.exports
-// console.log('Largest palindrome: ' + largestPalindrome())
-
 #export-func largestPalindrome = largestPalindrome
-#import-func console log = void logInt(int val)
 
 // Check is a 6 digit number palindrome
 int isPalindrome(int num) {
@@ -40,9 +33,6 @@ int largestPalindrome()
 				palindrome = product;
 		}
 	}
-
-	// Log count of loops. (Useful for code optimization.)
-	logInt(steps);
 
 	return palindrome;
 }

@@ -1,6 +1,5 @@
 (module
     (export "largestPalindrome" (func $largestPalindrome))
-    (import "console" "log" (func $logInt (param i32)))
     (func $isPalindrome (param $num i32) (result i32)
         (local $m i32)
         (local $n i32)
@@ -39,8 +38,6 @@
             (local.set $a (local.get $a) (i32.const 1) (i32.sub))
             (br 0)
         ))
-        (local.get $steps)
-        (call $logInt)
         (local.get $palindrome)
     )
 )

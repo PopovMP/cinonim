@@ -1,15 +1,6 @@
 // Rule 110
 // https://en.wikipedia.org/wiki/Rule_110
 
-// JavaScript
-//
-// const table = Array(100)
-// function setCell(index, value) { table[index] = value }
-// function printTable() { console.log(table.map(cell => cell === 0 ? '.' : '#').join('')) }
-// const wasmInstance = new WebAssembly.Instance(wasmModule, {js: {setCell, printTable}});
-// const { rule110 } = wasmInstance.exports;
-// rule110(100)
-
 #import-func js setCell    = void setCell(int index, int value)
 #import-func js printTable = void printTable()
 #export-func rule110 = rule110
