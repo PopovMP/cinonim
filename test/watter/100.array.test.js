@@ -1,5 +1,14 @@
 'use strict'
 
+/*
+	Allocates arrays. Sets and gets values. Prints 42.
+
+const wasmInstance = new WebAssembly.Instance(wasmModule, {})
+const { get13 } = wasmInstance.exports
+console.log( get13() )
+
+ */
+
 const {strictEqual}  = require('assert')
 const {describe, it} = require('@popovmp/mocha-tiny')
 const {ciToWat}      = require('../../index')
@@ -19,10 +28,10 @@ int get13()
 	i = 13;
 	n = 42;
 
-	foo[i] = n; //    0 + 8*i
-	bar[i] = n; //  800 + 4*i
-	baz[i] = n; // 1200 + 4*i
-	gaz[i] = n; // 1600 + 8*i
+	foo[i] = (double) n; //    0 + i<<3
+	bar[i] = (float)  n; //  800 + i<<2
+	baz[i] =          n; // 1200 + i<<2
+	gaz[i] = (long)   n; // 1600 + i<<3
 
 	return baz[13];
 }
@@ -37,10 +46,10 @@ const expected = `
         (local $n i32)
         (local.set $i (i32.const 13))
         (local.set $n (i32.const 42))
-        (f64.store (i32.add (i32.const 0) (i32.shl (local.get $i) (i32.const 3))) (local.get $n))
-        (f32.store (i32.add (i32.const 800) (i32.shl (local.get $i) (i32.const 2))) (local.get $n))
+        (f64.store (i32.add (i32.const 0) (i32.shl (local.get $i) (i32.const 3))) (local.get $n) (f64.convert_i32_s))
+        (f32.store (i32.add (i32.const 800) (i32.shl (local.get $i) (i32.const 2))) (local.get $n) (f32.convert_i32_s))
         (i32.store (i32.add (i32.const 1200) (i32.shl (local.get $i) (i32.const 2))) (local.get $n))
-        (i64.store (i32.add (i32.const 1600) (i32.shl (local.get $i) (i32.const 3))) (local.get $n))
+        (i64.store (i32.add (i32.const 1600) (i32.shl (local.get $i) (i32.const 3))) (local.get $n) (i64.extend_i32_s))
         (i32.load (i32.add (i32.const 1200) (i32.shl (i32.const 13) (i32.const 2))))
     )
 )
